@@ -1,0 +1,1 @@
+dotnet run --project ./ApiExample/ApiExample.csproj --launch-profile Local
