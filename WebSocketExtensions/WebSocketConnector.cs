@@ -15,7 +15,6 @@ public abstract class WebSocketConnector
 {
     private const int bufferSize = 1440; // because Ethernet's MTU is around 1500 bytes
     private const int messagesToSendChannelCapacity = 20;
-    private static readonly TimeSpan checkRemoteDisconnectSamplingPeriod = TimeSpan.FromMilliseconds(250);
 
     protected abstract WebSocketMessageDirection DirectionFromThis { get; }
 
@@ -167,23 +166,8 @@ public abstract class WebSocketConnector
             }
         }
 
-        async Task HasRemoteTryingToDisconnectAsync()
-        {
-            try
-            {
-                while (this.ws.State != WebSocketState.CloseReceived && this.ws.State != WebSocketState.Aborted)
-                {
-                    // don't use server cancellation token here
-                    await Task.Delay(checkRemoteDisconnectSamplingPeriod, disconnectToken);
-                };
-            }
-            catch
-            {
-            }
-        }
-
-        bool RemoteAbortedConnection() =>
-            this.ws.State == WebSocketState.Aborted;
+        bool IsRemoteClosingConnection() =>
+            this.ws.State == WebSocketState.Aborted || this.ws.State == WebSocketState.CloseReceived;
 
         bool CanSendMessages() =>
             (this.ws?.State == WebSocketState.Open || this.ws?.State == WebSocketState.Connecting || this.ws?.State == WebSocketState.CloseReceived)
@@ -199,16 +183,15 @@ public abstract class WebSocketConnector
         {
             var beganSending = HasMessageToSendAsync();
             var beganReceiving = HasMessageToReceiveAsync();
-            var beganRemoteDisconnecting = HasRemoteTryingToDisconnectAsync();
 
-            var firstOperation = await Task.WhenAny(beganSending, beganReceiving, beganRemoteDisconnecting);
+            var firstOperation = await Task.WhenAny(beganSending, beganReceiving);
 
             if (disconnectToken.IsCancellationRequested)
             {
                 await CloseStartingByLocalAsync(null, CancellationToken.None);
                 return; // exits the reception thread
             }
-            else if (RemoteAbortedConnection() || (firstOperation == beganRemoteDisconnecting && CanSendMessages()))
+            else if (IsRemoteClosingConnection())
             {
                 await FinishClosureStartedByRemoteAsync();
                 return; // exits the reception thread
