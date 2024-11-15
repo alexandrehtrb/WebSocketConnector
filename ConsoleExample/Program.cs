@@ -18,14 +18,14 @@ int msgCount = 0;
 await foreach (var msg in wsc.ExchangedMessagesCollector!.ReadAllAsync())
 {
     msgCount++;
-    Console.WriteLine($"Message {msgCount}, {msg.Direction}: {msg.ReadAsUtf8Text()}");
+    string msgText = msg.ReadAsUtf8Text()!;
+    Console.WriteLine($"Message {msgCount}, {msg.Direction}: {msgText}");
     
     if (msg.Direction == WebSocketMessageDirection.FromClient)
     {
         continue;
     }
 
-    string msgText = msg.ReadAsUtf8Text()!;
     if (msgText == "Hi!")
     {
         await wsc.SendMessageAsync(WebSocketMessageType.Text, "What time is it?", false);

@@ -207,8 +207,11 @@ public abstract class WebSocketConnector
                 if (isClosing)
                 {
                     // closure message already received
-                    WebSocketMessage closingMsg = new(OppositeDirection, WebSocketMessageType.Close, this.ws.CloseStatusDescription!, false);
-                    this.exchangedMessagesCollectorWriter?.TryWrite(closingMsg);
+                    if (!string.IsNullOrWhiteSpace(this.ws.CloseStatusDescription))
+                    {
+                        WebSocketMessage closingMsg = new(OppositeDirection, WebSocketMessageType.Close, this.ws.CloseStatusDescription, false);
+                        this.exchangedMessagesCollectorWriter?.TryWrite(closingMsg);
+                    }
                     await FinishClosureStartedByRemoteAsync();
                     return; // exits the reception thread
                 }
@@ -222,6 +225,12 @@ public abstract class WebSocketConnector
                     }
                 }
             }
+        }
+
+        if (IsRemoteClosingConnection())
+        {
+            await FinishClosureStartedByRemoteAsync();
+            return; // exits the reception thread
         }
     }
 
@@ -315,12 +324,17 @@ public abstract class WebSocketConnector
             buffer = null;
 
             var msgType = receivalResult.MessageType;
-            WebSocketMessage msg =
-                msgType == WebSocketMessageType.Close ?
+            WebSocketMessage? msg =
+                (msgType == WebSocketMessageType.Close && !string.IsNullOrWhiteSpace(this.ws.CloseStatusDescription)) ?
                 new(OppositeDirection, msgType, this.ws.CloseStatusDescription!, false) :
-                new(OppositeDirection, msgType, accumulator.ToArray(), false);
+                accumulator.Length > 0 ?
+                new(OppositeDirection, msgType, accumulator.ToArray(), false) :
+                null;
 
-            this.exchangedMessagesCollectorWriter?.TryWrite(msg);
+            if (msg is not null)
+            {
+                this.exchangedMessagesCollectorWriter?.TryWrite(msg);
+            }
             return msg;
         }
         catch

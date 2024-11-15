@@ -6,7 +6,7 @@ public static class BackgroundWebSocketsProcessor
 {
     private static readonly TimeSpan maximumLifetimePeriod = TimeSpan.FromSeconds(10);
 
-    public static async Task RegisterAndProcessAsync(WebSocket ws, string? subprotocol, TaskCompletionSource<object> socketFinishedTcs)
+    public static async Task RegisterAndProcessAsync(ILogger<WebSocketServerSideConnector> logger, WebSocket ws, string? subprotocol, TaskCompletionSource<object> socketFinishedTcs)
     {
         CancellationTokenSource cts = new(maximumLifetimePeriod);
         WebSocketServerSideConnector wsc = new(ws, cts);
@@ -17,21 +17,24 @@ public static class BackgroundWebSocketsProcessor
             await wsc.SendMessageAsync(WebSocketMessageType.Text, "I will close this connection in around 8s.", false);
         });
 
+        int msgCount = 0;
         await foreach (var msg in wsc.ExchangedMessagesCollector!.ReadAllAsync())
         {
+            msgCount++;
+            string msgText = msg.ReadAsUtf8Text()!;
+            logger.LogInformation("Message {msgCount}, {direction}: {msgText}", msgCount, msg.Direction, msgText);
+
             if (msg.Direction == WebSocketMessageDirection.FromServer)
             {
                 continue;
             }
-
-            string msgText = msg.ReadAsUtf8Text()!;
 
             await wsc.SendMessageAsync(WebSocketMessageType.Text, msgText switch
             {
                 "Hello!" => "Hi!",
                 "What time is it?" => "Now it's " + DateTime.Now.TimeOfDay,
                 "Thanks!" => "You're welcome!",
-                _ => string.Empty
+                _ => "I don't understand this message!"
             }, false);
         }
 
