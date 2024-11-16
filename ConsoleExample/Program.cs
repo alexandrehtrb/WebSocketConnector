@@ -32,7 +32,7 @@ await foreach (var msg in wsc.ExchangedMessagesCollector!.ReadAllAsync())
     }
     else if (msgText.StartsWith("Now it's"))
     {
-        await wsc.SendMessageAsync(WebSocketMessageType.Text, "Thanks!", false);
+        await wsc.SendMessageAsync(WebSocketMessageType.Close, "Thanks!", false);
         //await wsc.DisconnectAsync();
     }
 }

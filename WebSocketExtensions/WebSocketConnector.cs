@@ -206,12 +206,7 @@ public abstract class WebSocketConnector
                 bool isClosing = beganReceiving.Result.MessageType == WebSocketMessageType.Close;
                 if (isClosing)
                 {
-                    // closure message already received
-                    if (!string.IsNullOrWhiteSpace(this.ws.CloseStatusDescription))
-                    {
-                        WebSocketMessage closingMsg = new(OppositeDirection, WebSocketMessageType.Close, this.ws.CloseStatusDescription, false);
-                        this.exchangedMessagesCollectorWriter?.TryWrite(closingMsg);
-                    }
+                    // closure message already received                    
                     await FinishClosureStartedByRemoteAsync();
                     return; // exits the reception thread
                 }
@@ -357,6 +352,13 @@ public abstract class WebSocketConnector
         try
         {
             SetIsDisconnecting();
+
+            if (!string.IsNullOrWhiteSpace(this.ws.CloseStatusDescription))
+            {
+                WebSocketMessage closingMsg = new(OppositeDirection, WebSocketMessageType.Close, this.ws.CloseStatusDescription, false);
+                this.exchangedMessagesCollectorWriter?.TryWrite(closingMsg);
+            }
+
             // These are the valid states for calling client.CloseOutputAsync()
             if (this.ws?.State == WebSocketState.Open || this.ws?.State == WebSocketState.CloseReceived)
             {
