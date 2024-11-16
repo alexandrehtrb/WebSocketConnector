@@ -179,7 +179,7 @@ public abstract class WebSocketConnector
         ValueTask<WebSocketMessage> DequeueMessageToSendAsync() =>
             MessagesToSendChannel!.Reader.ReadAsync(CancellationToken.None);
 
-        while (CanSendMessages() && CanReceiveMessages())
+        while (CanSendMessages() || CanReceiveMessages())
         {
             var beganSending = HasMessageToSendAsync();
             var beganReceiving = HasMessageToReceiveAsync();
