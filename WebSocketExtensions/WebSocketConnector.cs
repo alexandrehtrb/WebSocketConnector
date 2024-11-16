@@ -76,7 +76,7 @@ public abstract class WebSocketConnector
         SetupExchangedMessagesCollectorChannel();
 
         this.cancelSendingAndReceivingTokenSource = cts;
-        StartMessagesExchangesProcessInBackground(cts.Token);
+        StartMessagesExchangeInBackground(cts.Token);
     }
 
     private void ClearAfterConnect()
@@ -93,8 +93,7 @@ public abstract class WebSocketConnector
 
     private void ClearAfterClosure()
     {
-        //this.client?.Dispose();
-        //this.client = null;
+        MessagesToSendChannel?.Writer?.Complete();
         MessagesToSendChannel = null;
         // To cancel the emission and reception threads:
         this.cancelSendingAndReceivingTokenSource?.Cancel();
@@ -131,103 +130,37 @@ public abstract class WebSocketConnector
 
     #endregion
 
-    #region SEND MESSAGES
+    #region MESSAGES EXCHANGE
 
-    private void StartMessagesExchangesProcessInBackground(CancellationToken disconnectToken) =>
-        Task.Factory.StartNew(() => ProcessMessagesExchangesAsync(disconnectToken),
-                              TaskCreationOptions.LongRunning);
-
-    private async Task ProcessMessagesExchangesAsync(CancellationToken disconnectToken)
+    private void StartMessagesExchangeInBackground(CancellationToken disconnectToken)
     {
-        // We are using a channel as a queue here because two different messages
-        // should not be sent at the same time through a WebSocket,
-        // as the other party cannot distinguish which message part corresponds to which message.
-        Task HasMessageToSendAsync()
-        {
-            try
-            {
-                return MessagesToSendChannel!.Reader.WaitToReadAsync(disconnectToken).AsTask();
-            }
-            catch (OperationCanceledException)
-            {
-                return Task.CompletedTask;
-            }
-        }
+        // We can receive and send at the same time,
+        // according to ManagedWebSocket class comment:
+        // https://github.com/dotnet/runtime/blob/main/src/libraries/System.Net.WebSockets/src/System/Net/WebSockets/ManagedWebSocket.cs
 
-        Task<ValueWebSocketReceiveResult> HasMessageToReceiveAsync()
-        {
-            try
-            {
-                return this.ws!.ReceiveAsync(Memory<byte>.Empty, disconnectToken).AsTask();
-            }
-            catch (OperationCanceledException)
-            {
-                return Task.FromResult(default(ValueWebSocketReceiveResult));
-            }
-        }
+        // One thread will send outbound messages 
+        // and another will receive inbound messages.
 
-        bool IsRemoteClosingConnection() =>
-            this.ws.State == WebSocketState.Aborted || this.ws.State == WebSocketState.CloseReceived;
+        // The "Receival" thread will take care of connection lifecycle,
+        // such as finish remote closures and close starting by local.
 
-        bool CanSendMessages() =>
-            (this.ws?.State == WebSocketState.Open || this.ws?.State == WebSocketState.Connecting || this.ws?.State == WebSocketState.CloseReceived)
-         && MessagesToSendChannel is not null;
+        // The "Sender" thread will send messages, as long as:
+        // 1) DisconnectToken not invoked;
+        // 2) The MessagesToSendChannel is not completed;
+        // 3) The inner WebSocket can send messages.
+        // When the connection closure happens in the Receival thread,
+        // conditions above will cease and Sender thread will finish too.
 
-        bool CanReceiveMessages() =>
-            (this.ws?.State == WebSocketState.Open || this.ws?.State == WebSocketState.Connecting || this.ws?.State == WebSocketState.CloseSent);
+        _ = Task.Factory.StartNew(() => ProcessOutgoingMessagesAsync(disconnectToken),
+                                  TaskCreationOptions.LongRunning);
 
-        ValueTask<WebSocketMessage> DequeueMessageToSendAsync() =>
-            MessagesToSendChannel!.Reader.ReadAsync(CancellationToken.None);
-
-        while (CanSendMessages() || CanReceiveMessages())
-        {
-            var beganSending = HasMessageToSendAsync();
-            var beganReceiving = HasMessageToReceiveAsync();
-
-            var firstOperation = await Task.WhenAny(beganSending, beganReceiving);
-
-            if (disconnectToken.IsCancellationRequested)
-            {
-                await CloseStartingByLocalAsync(null, CancellationToken.None);
-                return; // exits the reception thread
-            }
-            else if (IsRemoteClosingConnection())
-            {
-                await FinishClosureStartedByRemoteAsync();
-                return; // exits the reception thread
-            }
-            else if (firstOperation == beganSending && CanSendMessages())
-            {
-                var msgToSend = await DequeueMessageToSendAsync();
-                await SendMessageAsync(msgToSend!, disconnectToken);
-            }
-            else if (firstOperation == beganReceiving)
-            {
-                bool isClosing = beganReceiving.Result.MessageType == WebSocketMessageType.Close;
-                if (isClosing)
-                {
-                    // closure message already received                    
-                    await FinishClosureStartedByRemoteAsync();
-                    return; // exits the reception thread
-                }
-                else if (CanReceiveMessages())
-                {
-                    var receivedMsg = await ReceiveMessageAsync(disconnectToken);
-                    if (receivedMsg?.Type == WebSocketMessageType.Close)
-                    {
-                        await FinishClosureStartedByRemoteAsync();
-                        return; // exits the reception thread
-                    }
-                }
-            }
-        }
-
-        if (IsRemoteClosingConnection())
-        {
-            await FinishClosureStartedByRemoteAsync();
-            return; // exits the reception thread
-        }
+        _ = Task.Factory.StartNew(() => ProcessIncomingMessagesAsync(disconnectToken),
+                                  TaskCreationOptions.LongRunning);
     }
+
+    #endregion
+
+    #region SEND MESSAGES
 
     // They have the same name as the method below, but they enqueue in the channel;
     // they are not responsible for the real sending
@@ -244,6 +177,28 @@ public abstract class WebSocketConnector
         ConnectionState == WebSocketConnectionState.Connected && MessagesToSendChannel is not null ?
         MessagesToSendChannel!.Writer.WriteAsync(msg) :
         ValueTask.CompletedTask; // Not throwing exception if user tried to send message whilst WebSocket is not connected
+
+    private async Task ProcessOutgoingMessagesAsync(CancellationToken disconnectToken)
+    {
+        bool CanSendMessages() =>
+            (this.ws.State == WebSocketState.Open || this.ws.State == WebSocketState.Connecting || this.ws.State == WebSocketState.CloseReceived)
+         && MessagesToSendChannel is not null;
+
+        // We are using a queue (channel) here because two different messages
+        // should not be sent at the same time through a WebSocket,
+        // as the other party cannot distinguish which message part corresponds to which message.
+        await foreach (var msg in MessagesToSendChannel!.Reader.ReadAllAsync(disconnectToken))
+        {
+            if (CanSendMessages())
+            {
+                await SendMessageAsync(msg, disconnectToken);
+            }
+            else
+            {
+                return; // exits the reception thread
+            }
+        }
+    }
 
     private async Task SendMessageAsync(WebSocketMessage msg, CancellationToken cancellationToken = default)
     {
@@ -296,6 +251,90 @@ public abstract class WebSocketConnector
 
     #region RECEIVE MESSAGES
 
+    private async Task ProcessIncomingMessagesAsync(CancellationToken disconnectToken)
+    {
+        async Task<ValueWebSocketReceiveResult> HasMessageToReceiveAsync()
+        {
+            try
+            {
+                // This method NEEDS to be async Task instead of just Task,
+                // elsewise, the CancellationToken will not work (I don't know why)
+                return await this.ws!.ReceiveAsync(Memory<byte>.Empty, disconnectToken);
+            }
+            catch (OperationCanceledException)
+            {
+                return await ValueTask.FromResult(default(ValueWebSocketReceiveResult));
+            }
+        }
+
+        async Task HasRemoteDisconnectingAsync()
+        {
+            try
+            {
+                while (!IsRemoteClosingConnection())
+                {
+                    // 200ms interval check
+                    await Task.Delay(200, disconnectToken);
+                }
+            }
+            catch (OperationCanceledException)
+            {
+            }
+        }
+
+        bool IsRemoteClosingConnection() =>
+            this.ws.State == WebSocketState.Aborted || this.ws.State == WebSocketState.CloseReceived;
+
+        bool CanReceiveMessages() =>
+            this.ws.State == WebSocketState.Open || this.ws.State == WebSocketState.Connecting || this.ws.State == WebSocketState.CloseSent;
+
+        while (CanReceiveMessages())
+        {
+            var beganReceiving = HasMessageToReceiveAsync();
+            var beganRemoteDisconnect = HasRemoteDisconnectingAsync();
+            // TODO: Is there a better way to check for remote disconnect 
+            // other than periodically check status?
+
+            var task = await Task.WhenAny(beganReceiving, beganRemoteDisconnect);
+
+            if (disconnectToken.IsCancellationRequested)
+            {
+                await CloseStartingByLocalAsync(null, CancellationToken.None);
+                return; // exits the reception thread
+            }
+            else if (IsRemoteClosingConnection())
+            {
+                await FinishClosureStartedByRemoteAsync();
+                return; // exits the reception thread
+            }
+            else if (task == beganReceiving)
+            {
+                bool isClosing = beganReceiving.Result.MessageType == WebSocketMessageType.Close;
+                if (isClosing)
+                {
+                    // closure message already received                    
+                    await FinishClosureStartedByRemoteAsync();
+                    return; // exits the reception thread
+                }
+                else if (CanReceiveMessages())
+                {
+                    var receivedMsg = await ReceiveMessageAsync(disconnectToken);
+                    if (receivedMsg?.Type == WebSocketMessageType.Close)
+                    {
+                        await FinishClosureStartedByRemoteAsync();
+                        return; // exits the reception thread
+                    }
+                }
+            }
+        }
+
+        if (IsRemoteClosingConnection())
+        {
+            await FinishClosureStartedByRemoteAsync();
+            return; // exits the reception thread
+        }
+    }
+
     private async Task<WebSocketMessage?> ReceiveMessageAsync(CancellationToken disconnectToken)
     {
         using MemoryStream accumulator = new();
@@ -334,6 +373,7 @@ public abstract class WebSocketConnector
         }
         catch
         {
+            // We will not attempt to close connection if an exception happens
             if (buffer != null)
             {
                 ArrayPool<byte>.Shared.Return(buffer);
