@@ -309,12 +309,7 @@ public abstract class WebSocketConnector
             }
             else if (task == beganReceiving && CanReceiveMessages())
             {
-                var receivedMsg = await ReceiveMessageAsync(disconnectToken);
-                if (receivedMsg?.Type == WebSocketMessageType.Close)
-                {
-                    await FinishClosureStartedByRemoteAsync();
-                    return; // exits the reception thread
-                }
+                await ReceiveMessageAsync(disconnectToken);
             }
         }
 
