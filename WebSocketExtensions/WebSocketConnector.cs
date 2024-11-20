@@ -69,14 +69,14 @@ public abstract class WebSocketConnector
 
     #region CONNECTION
 
-    protected void SetupAfterConnected(CancellationTokenSource cts)
+    protected virtual void SetupAfterConnected()
     {
         ClearAfterConnect();
         MessagesToSendChannel = BuildMessagesToSendChannel();
         SetupExchangedMessagesCollectorChannel();
 
-        this.cancelSendingAndReceivingTokenSource = cts;
-        StartMessagesExchangeInBackground(cts.Token);
+        this.cancelSendingAndReceivingTokenSource = new();
+        StartMessagesExchangeInBackground(this.cancelSendingAndReceivingTokenSource.Token);
     }
 
     private void ClearAfterConnect()
@@ -210,7 +210,9 @@ public abstract class WebSocketConnector
 
             if (disconnectToken.IsCancellationRequested)
             {
-                await CloseStartingByLocalAsync(null, CancellationToken.None);
+                // This means ClearAfterClosure() 
+                // has already been called, either from 
+                // CloseByLocal() or FinishClosingFromRemote().
                 return; // exits the reception thread
             }
             else if (IsRemoteClosingConnection())

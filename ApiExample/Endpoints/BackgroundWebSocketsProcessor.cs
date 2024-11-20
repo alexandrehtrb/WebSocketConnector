@@ -8,13 +8,18 @@ public static class BackgroundWebSocketsProcessor
 
     public static async Task RegisterAndProcessAsync(ILogger<WebSocketServerSideConnector> logger, WebSocket ws, string? subprotocol, TaskCompletionSource<object> socketFinishedTcs)
     {
-        CancellationTokenSource cts = new(maximumLifetimePeriod);
-        WebSocketServerSideConnector wsc = new(ws, cts);
+        WebSocketServerSideConnector wsc = new(ws);
 
         _ = Task.Run(async () =>
         {
             await Task.Delay(TimeSpan.FromSeconds(2));
             await wsc.SendMessageAsync(WebSocketMessageType.Text, "I will close this connection in around 8s.", false);
+        });
+
+        _ = Task.Run(async () =>
+        {
+            await Task.Delay(maximumLifetimePeriod);
+            await wsc.DisconnectAsync();
         });
 
         int msgCount = 0;

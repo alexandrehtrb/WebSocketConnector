@@ -35,10 +35,9 @@ public sealed class WebSocketClientSideConnector : WebSocketConnector
         }
     }
 
-    private void SetupAfterConnected()
+    protected override void SetupAfterConnected()
     {
-        CancellationTokenSource cts = new(); // no maximum lifetime period
-        base.SetupAfterConnected(cts);
+        base.SetupAfterConnected();
 
         ConnectionHttpStatusCode = ((ClientWebSocket)this.ws).HttpStatusCode;
         ConnectionHttpHeaders = ((ClientWebSocket)this.ws).HttpResponseHeaders;
