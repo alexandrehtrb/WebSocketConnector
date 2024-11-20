@@ -141,7 +141,7 @@ public abstract class WebSocketConnector
         // This is a quasi-parallel communication,
         // because the shift between sending and receiving
         // is fast enough to avoid competition between those tasks.
-        // Pros: one thread instead of two.
+        // Pros: one thread instead of two, less memory and CPU usage.
         // Cons: rare competition could (in theory?) happen
         // between intensive simultaneous sending and receiving.
 
