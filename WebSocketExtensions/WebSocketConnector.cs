@@ -199,6 +199,21 @@ public abstract class WebSocketConnector
             }
         }
 
+        async Task HasRemoteDisconnectingAsync()
+        {
+            try
+            {
+                while (!IsRemoteClosingConnection())
+                {
+                    // 200ms interval check
+                    await Task.Delay(200, disconnectToken);
+                }
+            }
+            catch (OperationCanceledException)
+            {
+            }
+        }
+
         bool IsRemoteClosingConnection() =>
             this.ws?.State == WebSocketState.Aborted || this.ws?.State == WebSocketState.CloseReceived;
 
@@ -216,8 +231,9 @@ public abstract class WebSocketConnector
         {
             var beganSending = HasMessageToSendAsync();
             var beganReceiving = HasMessageToReceiveAsync();
+            var beganRemoteDisconnecting = HasRemoteDisconnectingAsync();
 
-            var firstOperation = await Task.WhenAny(beganSending, beganReceiving);
+            var firstOperation = await Task.WhenAny(beganSending, beganReceiving, beganRemoteDisconnecting);
 
             if (disconnectToken.IsCancellationRequested)
             {
