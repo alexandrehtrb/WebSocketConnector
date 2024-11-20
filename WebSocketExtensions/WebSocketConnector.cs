@@ -210,9 +210,8 @@ public abstract class WebSocketConnector
 
             if (disconnectToken.IsCancellationRequested)
             {
-                // This means ClearAfterClosure() 
-                // has already been called, either from 
-                // CloseByLocal() or FinishClosingFromRemote().
+                // This means ClearAfterClosure() has
+                // been called, after CloseByLocal().
                 return; // exits the reception thread
             }
             else if (IsRemoteClosingConnection())
