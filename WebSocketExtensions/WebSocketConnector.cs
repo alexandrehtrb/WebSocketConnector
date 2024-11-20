@@ -121,7 +121,7 @@ public abstract class WebSocketConnector
         UnboundedChannelOptions sendChannelOpts = new()
         {
             SingleReader = true,
-            SingleWriter = false
+            SingleWriter = true
         };
         var channel = Channel.CreateUnbounded<WebSocketMessage>(sendChannelOpts);
         this.exchangedMessagesCollectorWriter = channel.Writer;
