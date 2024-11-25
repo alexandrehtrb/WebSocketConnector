@@ -4,10 +4,10 @@ public sealed class WebSocketServerSideConnector : WebSocketConnector
 {
     protected override WebSocketMessageDirection DirectionFromThis => WebSocketMessageDirection.FromServer;
 
-    public WebSocketServerSideConnector(WebSocket client) : base(client)
+    public WebSocketServerSideConnector(WebSocket ws)
     {
         // when this connector gets created, the connection is already established
         SetIsConnected();
-        base.SetupAfterConnected();
+        base.SetupAfterConnected(ws);
     }
 }

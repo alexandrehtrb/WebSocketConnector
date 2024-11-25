@@ -4,12 +4,12 @@ using System.Net.WebSockets;
 
 using var cws = MakeClientWebSocket();
 using var hc = MakeHttpClient(disableSslVerification: true);
-var wsc = new WebSocketClientSideConnector(cws, hc);
+var wsc = new WebSocketClientSideConnector();
 var uri = new Uri("wss://localhost:5001/test/http1websocket");
 
 Console.WriteLine("--- CONVERSATION BEGIN ---");
 
-await wsc.ConnectAsync(uri);
+await wsc.ConnectAsync(cws, hc, uri);
 
 // check here if connection is OK before sending messages
 await wsc.SendMessageAsync(WebSocketMessageType.Text, "Hello!", false);

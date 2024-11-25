@@ -37,12 +37,7 @@ public abstract class WebSocketConnector
 
     public Action<WebSocketConnectionState, Exception?>? OnConnectionChanged { get; set; }
 
-    protected readonly WebSocket ws;
-
-    protected WebSocketConnector(WebSocket ws)
-    {
-        this.ws = ws;
-    }
+    protected WebSocket? ws;
 
     #region STATE SETTERS
 
@@ -69,8 +64,9 @@ public abstract class WebSocketConnector
 
     #region CONNECTION
 
-    protected virtual void SetupAfterConnected()
+    protected virtual void SetupAfterConnected(WebSocket ws)
     {
+        this.ws = ws;
         ClearAfterConnect();
         MessagesToSendChannel = BuildMessagesToSendChannel();
         SetupExchangedMessagesCollectorChannel();
@@ -93,6 +89,8 @@ public abstract class WebSocketConnector
 
     private void ClearAfterClosure()
     {
+        this.ws?.Dispose();
+        this.ws = null;
         MessagesToSendChannel?.Writer?.TryComplete();
         MessagesToSendChannel = null;
         // To cancel the emission and reception threads:
@@ -366,7 +364,7 @@ public abstract class WebSocketConnector
         {
             SetIsDisconnecting();
 
-            if (!string.IsNullOrWhiteSpace(this.ws.CloseStatusDescription))
+            if (!string.IsNullOrWhiteSpace(this.ws?.CloseStatusDescription))
             {
                 WebSocketMessage closingMsg = new(OppositeDirection, WebSocketMessageType.Close, this.ws.CloseStatusDescription, false);
                 this.exchangedMessagesCollectorWriter?.TryWrite(closingMsg);

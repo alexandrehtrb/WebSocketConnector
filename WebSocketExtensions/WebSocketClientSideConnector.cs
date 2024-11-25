@@ -8,16 +8,9 @@ public sealed class WebSocketClientSideConnector : WebSocketConnector
 
     public IReadOnlyDictionary<string, IEnumerable<string>>? ConnectionHttpHeaders { get; private set; }
 
-    private readonly HttpClient httpClient;
-
-    public WebSocketClientSideConnector(ClientWebSocket client, HttpClient httpClient) : base(client)
-    {
-        this.httpClient = httpClient;
-    }
-
     #region CONNECTION
 
-    public async Task ConnectAsync(Uri uri, CancellationToken cancellationToken = default)
+    public async Task ConnectAsync(ClientWebSocket client, HttpClient httpClient, Uri uri, CancellationToken cancellationToken = default)
     {
         if (ConnectionState == WebSocketConnectionState.Connected || ConnectionState == WebSocketConnectionState.Connecting)
             return;  // Not throwing exception if user tried to connect whilst WebSocket is connected
@@ -25,8 +18,8 @@ public sealed class WebSocketClientSideConnector : WebSocketConnector
         try
         {
             SetIsConnecting();
-            await ((ClientWebSocket)this.ws).ConnectAsync(uri!, this.httpClient, cancellationToken);
-            SetupAfterConnected();
+            await client.ConnectAsync(uri!, httpClient, cancellationToken);
+            SetupAfterConnected(client);
             SetIsConnected();
         }
         catch (Exception ex)
@@ -35,12 +28,12 @@ public sealed class WebSocketClientSideConnector : WebSocketConnector
         }
     }
 
-    protected override void SetupAfterConnected()
+    protected override void SetupAfterConnected(WebSocket ws)
     {
-        base.SetupAfterConnected();
+        base.SetupAfterConnected(ws);
 
-        ConnectionHttpStatusCode = ((ClientWebSocket)this.ws).HttpStatusCode;
-        ConnectionHttpHeaders = ((ClientWebSocket)this.ws).HttpResponseHeaders;
+        ConnectionHttpStatusCode = ((ClientWebSocket)ws).HttpStatusCode;
+        ConnectionHttpHeaders = ((ClientWebSocket)ws).HttpResponseHeaders;
     }
 
     #endregion
