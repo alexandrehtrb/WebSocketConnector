@@ -21,7 +21,7 @@ It has full compatibility with NativeAOT and trimming.
   - [Message compression](#message-compression)
   - [WebSockets over HTTP/2](#websockets-over-http2)
 
-## Instalação
+## Installation
 
 Add the [NuGet package](https://www.nuget.org/packages/AlexandreHtrb.WebSocketExtensions) to the project file:
 
