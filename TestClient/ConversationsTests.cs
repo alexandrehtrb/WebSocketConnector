@@ -97,21 +97,27 @@ public class ConversationsTests
         Assert.AreEqual(WebSocketMessageType.Text, msgs[14].Type);
         Assert.AreEqual("I will close this connection in around 3s.", msgs[14].ReadAsUtf8Text());
 
-        bool sentImgEquality = await CheckIfFilesContentsAreEqualAsync(
-            ClientServerFullConversation.GetClientExampleFilePath("small_file.jpg"),
-            ClientServerFullConversation.GetServerExampleFilePath("received_img.jpg"));
+        string smallImgFilePath = ClientServerFullConversation.GetClientExampleFilePath("small_file.jpg");
+        string largeImgFilePath = ClientServerFullConversation.GetServerExampleFilePath("large_file.jpg");
+        string sentImgFilePath = ClientServerFullConversation.GetServerExampleFilePath("received_img.jpg");
+        string receivedImgFilePath = ClientServerFullConversation.GetClientExampleFilePath("received_img.jpg");
 
+        Console.WriteLine("Small img file path: " + smallImgFilePath);
+        Console.WriteLine("Sent img file path: " + sentImgFilePath);  
+        Console.WriteLine("Large img file path: " + largeImgFilePath);
+        Console.WriteLine("Received img file path: " + receivedImgFilePath);
+
+        bool sentImgEquality = await CheckIfFilesContentsAreEqualAsync(smallImgFilePath, sentImgFilePath);
+        
+        Assert.AreEqual(9784, new FileInfo(smallImgFilePath).Length);
+        Assert.AreEqual(9784, new FileInfo(sentImgFilePath).Length);
         Assert.IsTrue(sentImgEquality);
-        Assert.AreEqual(9784, new FileInfo(ClientServerFullConversation.GetClientExampleFilePath("small_file.jpg")).Length);
-        Assert.AreEqual(9784, new FileInfo(ClientServerFullConversation.GetServerExampleFilePath("received_img.jpg")).Length);
 
-        bool receivedImgEquality = await CheckIfFilesContentsAreEqualAsync(
-            ClientServerFullConversation.GetClientExampleFilePath("received_img.jpg"),
-            ClientServerFullConversation.GetServerExampleFilePath("large_file.jpg"));
-
+        bool receivedImgEquality = await CheckIfFilesContentsAreEqualAsync(largeImgFilePath, receivedImgFilePath);
+        
+        Assert.AreEqual(191316, new FileInfo(largeImgFilePath).Length);
+        Assert.AreEqual(191316, new FileInfo(receivedImgFilePath).Length);
         Assert.IsTrue(receivedImgEquality);
-        Assert.AreEqual(191316, new FileInfo(ClientServerFullConversation.GetClientExampleFilePath("received_img.jpg")).Length);
-        Assert.AreEqual(191316, new FileInfo(ClientServerFullConversation.GetServerExampleFilePath("large_file.jpg")).Length);
     }
 
     [TestMethod]
