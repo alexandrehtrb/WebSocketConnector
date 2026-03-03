@@ -73,7 +73,6 @@ jobs:
         NATIVEAOT: ${{ inputs.nativeAot }}
 
     - name: Upload artifacts to workflow results
-      if: ${{ inputs.runCD }}
       uses: actions/upload-artifact@v7
       with:
         compression-level: 6
