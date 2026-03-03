@@ -1,4 +1,4 @@
-# WebSocketConnector
+# AlexandreHtrb.WebSocketExtensions
 
 [Read in english](README.md)
 
@@ -6,6 +6,7 @@ Este pacote é uma camada de abstração construída em cima das implementaçõe
 
 Ele é compatível com compilação NativeAOT e trimming.
 
+- [Instalação](#instalação)
 - [Como usar](#como-usar)
   - [Código de exemplo, servidor](#código-de-exemplo-servidor)
   - [Código de exemplo, cliente](#código-de-exemplo-cliente)
@@ -19,6 +20,16 @@ Ele é compatível com compilação NativeAOT e trimming.
   - [Subprotocolos](#subprotocolos)
   - [Compressão de mensagens](#compressão-de-mensagens)
   - [WebSockets em HTTP/2](#websockets-em-http2)
+
+## Instalação
+
+Adicionar [pacote NuGet](https://www.nuget.org/packages/AlexandreHtrb.WebSocketExtensions) ao arquivo do projeto:
+
+```xml
+<ItemGroup>
+    <PackageReference Include="AlexandreHtrb.WebSocketExtensions" Version="1.0.0" />
+</ItemGroup>
+```
 
 ## Como usar
 

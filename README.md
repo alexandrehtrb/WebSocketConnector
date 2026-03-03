@@ -1,4 +1,4 @@
-# WebSocketConnector
+# AlexandreHtrb.WebSocketExtensions
 
 [Ler em português](README_pt.md)
 
@@ -6,6 +6,7 @@ This project is a custom abstraction layer built on top of `System.Net.WebSocket
 
 It has full compatibility with NativeAOT and trimming.
 
+- [Installation](#installation)
 - [How to use](#how-to-use)
   - [Example code, server](#example-code-server)
   - [Example code, client](#example-code-client)
@@ -19,6 +20,16 @@ It has full compatibility with NativeAOT and trimming.
   - [Subprotocols](#subprotocols)
   - [Message compression](#message-compression)
   - [WebSockets over HTTP/2](#websockets-over-http2)
+
+## Instalação
+
+Add the [NuGet package](https://www.nuget.org/packages/AlexandreHtrb.WebSocketExtensions) to the project file:
+
+```xml
+<ItemGroup>
+    <PackageReference Include="AlexandreHtrb.WebSocketExtensions" Version="1.0.0" />
+</ItemGroup>
+```
 
 ## How to use
 
