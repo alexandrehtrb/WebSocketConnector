@@ -19,8 +19,8 @@ public abstract class WebSocketConnector
     // because Ethernet's MTU is around 1500 bytes
     private const int bufferSize = 1440;
 
-    // 40 messages waiting to be send should be enough for most applications.
-    private const int messagesToSendChannelCapacity = 40;
+    // 20 messages waiting to be send should be enough for most applications.
+    private const int messagesToSendChannelCapacity = 20;
 
     protected abstract WebSocketMessageDirection DirectionFromThis { get; }
 
