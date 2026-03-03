@@ -69,7 +69,11 @@ namespace TestClient
         }
 
         internal static DirectoryInfo GetProjectDir() =>
+#if DEBUG
             new DirectoryInfo(Directory.GetCurrentDirectory()).Parent!.Parent!.Parent!;
+#else
+            new DirectoryInfo(Directory.GetCurrentDirectory())!;
+#endif
 
         internal static string GetClientExampleFilePath(string testFileName)
         {
