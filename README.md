@@ -105,11 +105,11 @@ Server: You're welcome!
 
 ```cs
 private static IApplicationBuilder ConfigureApp(this WebApplication app) =>
-	app.MapTestEndpoints()
-	   .UseWebSockets(new()
-	   {
-		   KeepAliveInterval = TimeSpan.FromMinutes(2)
-	   });
+    app.MapTestEndpoints()
+       .UseWebSockets(new()
+       {
+           KeepAliveInterval = TimeSpan.FromMinutes(2)
+       });
 ```
 
 2) Map the WebSocket endpoint:
@@ -117,26 +117,26 @@ private static IApplicationBuilder ConfigureApp(this WebApplication app) =>
 ```cs
 public static WebApplication MapTestEndpoints(this WebApplication app)
 {
-	app.MapGet("test/http1websocket", TestHttp1WebSocket);
-	return app;
+    app.MapGet("test/http1websocket", TestHttp1WebSocket);
+    return app;
 }
 
 private static async Task TestHttp1WebSocket(HttpContext httpCtx, ILogger<BackgroundWebSocketsProcessor> logger)
 {
-	if (!httpCtx.WebSockets.IsWebSocketRequest)
-	{
-		byte[] txtBytes = Encoding.UTF8.GetBytes("Only WebSockets requests are accepted here!");
-		httpCtx.Response.StatusCode = (int)HttpStatusCode.BadRequest;
-		await httpCtx.Response.BodyWriter.WriteAsync(txtBytes);
-	}
-	else
-	{
-		using var webSocket = await httpCtx.WebSockets.AcceptWebSocketAsync();
-		TaskCompletionSource<object> socketFinishedTcs = new();
+    if (!httpCtx.WebSockets.IsWebSocketRequest)
+    {
+        byte[] txtBytes = Encoding.UTF8.GetBytes("Only WebSockets requests are accepted here!");
+        httpCtx.Response.StatusCode = (int)HttpStatusCode.BadRequest;
+        await httpCtx.Response.BodyWriter.WriteAsync(txtBytes);
+    }
+    else
+    {
+        using var webSocket = await httpCtx.WebSockets.AcceptWebSocketAsync();
+        TaskCompletionSource<object> socketFinishedTcs = new();
 
-		await BackgroundWebSocketsProcessor.RegisterAndProcessAsync(logger, webSocket, socketFinishedTcs);
-		await socketFinishedTcs.Task;
-	}
+        await BackgroundWebSocketsProcessor.RegisterAndProcessAsync(logger, webSocket, socketFinishedTcs);
+        await socketFinishedTcs.Task;
+    }
 }
 ```
 
@@ -166,13 +166,13 @@ public static class BackgroundWebSocketsProcessor
             logger.LogInformation("Message {msgCount}, {direction}: {msgText}", msgCount, msg.Direction, msgText);
 
             if (msg.Direction == WebSocketMessageDirection.FromServer)
-				continue; // ignore msgs from own side
-				
-			// handle messages here
-		}
-		
-		socketFinishedTcs.SetResult(true); // finish connection
-	}
+                continue; // ignore msgs from own side
+                
+            // handle messages here
+        }
+        
+        socketFinishedTcs.SetResult(true); // finish connection
+    }
 }
 ```
 
@@ -195,11 +195,11 @@ Here we can put connection retries.
 ```cs
 while (!cancellationToken.IsCancellationRequested)
 {
-	_ = Task.Run(async () =>
-	{
-		await Task.Delay(TimeSpan.FromSeconds(15));
-		await wsc.SendMessageAsync(WebSocketMessageType.Text, "Are you there?", false);
-	});
+    _ = Task.Run(async () =>
+    {
+        await Task.Delay(TimeSpan.FromSeconds(15));
+        await wsc.SendMessageAsync(WebSocketMessageType.Text, "Are you there?", false);
+    });
 }
 ```
 
@@ -251,19 +251,19 @@ await wsc.ConnectAsync(cws, hc, uri, cancellationToken);
 ```diff
 private static async Task TestHttp1WebSocket(HttpContext httpCtx, ILogger<BackgroundWebSocketsProcessor> logger)
 {
-	if (!httpCtx.WebSockets.IsWebSocketRequest)
-	{
-		// ...
-	}
-	else
-	{
-		using var webSocket = await httpCtx.WebSockets.AcceptWebSocketAsync();
-		TaskCompletionSource<object> socketFinishedTcs = new();
-+		string? subprotocol = webSocket.SubProtocol ?? httpCtx.WebSockets.WebSocketRequestedProtocols.FirstOrDefault();
+    if (!httpCtx.WebSockets.IsWebSocketRequest)
+    {
+        // ...
+    }
+    else
+    {
+        using var webSocket = await httpCtx.WebSockets.AcceptWebSocketAsync();
+        TaskCompletionSource<object> socketFinishedTcs = new();
++        string? subprotocol = webSocket.SubProtocol ?? httpCtx.WebSockets.WebSocketRequestedProtocols.FirstOrDefault();
 
-		await BackgroundWebSocketsProcessor.RegisterAndProcessAsync(logger, webSocket, subprotocol, socketFinishedTcs);
-		await socketFinishedTcs.Task;
-	}
+        await BackgroundWebSocketsProcessor.RegisterAndProcessAsync(logger, webSocket, subprotocol, socketFinishedTcs);
+        await socketFinishedTcs.Task;
+    }
 }
 ```
 
@@ -310,7 +310,7 @@ On HTTP/2 WebSockets, the HTTP method CONNECT is used, instead of GET.
 ```cs
 public static WebApplication MapTestEndpoints(this WebApplication app)
 {
-	app.MapMethods("test/http2websocket", new[] { HttpMethods.Connect }, TestHttp2WebSocket);
-	return app;
+    app.MapMethods("test/http2websocket", new[] { HttpMethods.Connect }, TestHttp2WebSocket);
+    return app;
 }
 ```
