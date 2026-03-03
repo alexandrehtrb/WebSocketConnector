@@ -15,6 +15,7 @@ Ele é compatível com compilação NativeAOT e trimming.
   - [Monitorar estado da conexão](#monitorar-estado-da-conexão)
   - [Enviar mensagem periodicamente](#enviar-mensagem-periodicamente)
   - [Encerrar conversa após determinado tempo](#encerrar-conversa-após-determinado-tempo)
+  - [Envio de arquivos](#envio-de-arquivos)
   - [Pegar HTTP status code e headers de resposta](#pegar-http-status-code-e-headers-de-resposta)
   - [Autenticação e headers de requisição](#autenticação-e-headers-de-requisição)
   - [Subprotocolos](#subprotocolos)
@@ -212,6 +213,16 @@ _ = Task.Run(async () =>
     await wsc.DisconnectAsync();
 });
 ```
+
+### Envio de arquivos
+
+```cs
+// não use 'using'
+FileStream fs = new("C:\\Files\my_image.jpg", FileMode.Open);
+await wsc.SendMessageAsync(WebSocketMessageType.Binary, fs, false);
+```
+
+Ao usar Streams para enviar mensagens, não usar a palavra-chave `using`. O Stream será disposed só depois, dentro do conector.
 
 ### Pegar HTTP status code e headers de resposta
 

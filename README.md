@@ -15,6 +15,7 @@ It has full compatibility with NativeAOT and trimming.
   - [Monitor connection state](#monitor-connection-state)
   - [Periodically send a message](#periodically-send-a-message)
   - [End conversation after a certain amount of time](#end-conversation-after-a-certain-amount-of-time)
+  - [Sending files](#sending-files)
   - [Retrieve HTTP status code and response headers](#retrieve-http-status-code-and-response-headers)
   - [Authentication and request headers](#authentication-and-request-headers)
   - [Subprotocols](#subprotocols)
@@ -212,6 +213,16 @@ _ = Task.Run(async () =>
     await wsc.DisconnectAsync();
 });
 ```
+
+### Sending files
+
+```cs
+// don't use 'using'
+FileStream fs = new("C:\\Files\my_image.jpg", FileMode.Open);
+await wsc.SendMessageAsync(WebSocketMessageType.Binary, fs, false);
+```
+
+When using Streams to send messages, don't use the `using` keyword. The Stream will be disposed further, inside the connector.
 
 ### Retrieve HTTP status code and response headers
 
