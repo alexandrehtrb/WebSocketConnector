@@ -1,6 +1,5 @@
 ﻿using AlexandreHtrb.WebSocketExtensions;
 using System.Net.WebSockets;
-using Xunit;
 
 namespace TestClient
 {
@@ -15,7 +14,7 @@ namespace TestClient
             switch (msg.Type, msgText)
             {
                 case (WebSocketMessageType.Text, "Hi!"):
-                    await wsc.DisconnectAsync(TestContext.Current.CancellationToken);
+                    await wsc.DisconnectAsync(default);
                     break;
                 default:
                     break;

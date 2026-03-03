@@ -13,11 +13,31 @@
     <PublishTrimmed Condition="'$(PublishAot)' == 'True'">True</PublishTrimmed>
     <TrimMode Condition="'$(PublishAot)' == 'True'">Full</TrimMode>    
   </PropertyGroup>
-  
+
   <ItemGroup>
     <ProjectReference Include="..\TestShared\TestShared.csproj" />
     <ProjectReference Include="..\AlexandreHtrb.WebSocketExtensions\AlexandreHtrb.WebSocketExtensions.csproj" />
     <!--PackageReference Include="AlexandreHtrb.WebSocketExtensions" Version="0.0.1" /-->
+  </ItemGroup>
+  <ItemGroup>
+    <!-- 
+      Experimental MSTest Engine & source generator, 
+      close sourced, licensed the same as our extensions 
+      with Microsoft Testing Platform Tools license.
+    -->
+    <PackageReference Include="MSTest.Engine" Version="2.0.0-alpha.26103.11" />
+    <PackageReference Include="MSTest.SourceGeneration" Version="2.0.0-alpha.26103.11" />
+
+    <PackageReference Include="Microsoft.CodeCoverage.MSBuild" Version="18.5.2" />
+    <PackageReference Include="Microsoft.Testing.Extensions.CodeCoverage" Version="18.5.2" />
+
+    <PackageReference Include="Microsoft.Testing.Extensions.TrxReport" Version="2.1.0" />
+    <PackageReference Include="Microsoft.Testing.Platform.MSBuild" Version="2.1.0" />
+    <PackageReference Include="MSTest.TestFramework" Version="4.1.0" />
+    <PackageReference Include="MSTest.Analyzers" Version="4.1.0" />
+  </ItemGroup>
+  
+  <!--ItemGroup>
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.0.1" />
     <PackageReference Include="xunit.v3" Version="3.2.2" />
     <PackageReference Include="xunit.runner.visualstudio" Version="3.1.5">
@@ -28,6 +48,6 @@
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
-  </ItemGroup>
+  </ItemGroup-->
 
 </Project>
