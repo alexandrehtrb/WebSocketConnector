@@ -1,7 +1,10 @@
 using System.Buffers;
+using System.Net.WebSockets;
+using System.Text.Json;
+using System.Text.Json.Serialization.Metadata;
 using System.Threading.Channels;
 
-namespace System.Net.WebSockets;
+namespace AlexandreHtrb.WebSocketExtensions;
 
 public enum WebSocketConnectionState
 {
@@ -13,8 +16,11 @@ public enum WebSocketConnectionState
 
 public abstract class WebSocketConnector
 {
-    private const int bufferSize = 1440; // because Ethernet's MTU is around 1500 bytes
-    private const int messagesToSendChannelCapacity = 20;
+    // because Ethernet's MTU is around 1500 bytes
+    private const int bufferSize = 1440;
+
+    // 40 messages waiting to be send should be enough for most applications.
+    private const int messagesToSendChannelCapacity = 40;
 
     protected abstract WebSocketMessageDirection DirectionFromThis { get; }
 
@@ -26,6 +32,7 @@ public abstract class WebSocketConnector
     public WebSocketConnectionState ConnectionState { get; protected set; }
 
     public Exception? ConnectionException { get; private set; }
+
 
     private ChannelWriter<WebSocketMessage>? exchangedMessagesCollectorWriter;
 
@@ -250,10 +257,14 @@ public abstract class WebSocketConnector
     public ValueTask SendMessageAsync(WebSocketMessageType type, string text, bool disableCompression) =>
         EnqueueMessageToSendAsync(new(DirectionFromThis, type, text, disableCompression));
 
+    public ValueTask SendMessageAsync<T>(WebSocketMessageType type, T tObj, JsonTypeInfo<T> jsonTypeInfo, bool disableCompression) =>
+        EnqueueMessageToSendAsync(new(DirectionFromThis, type, JsonSerializer.SerializeToUtf8Bytes(tObj, jsonTypeInfo), disableCompression));
+
     private ValueTask EnqueueMessageToSendAsync(WebSocketMessage msg) =>
+        // Not throwing exception if user tried to send message whilst WebSocket is not connected
         ConnectionState == WebSocketConnectionState.Connected && MessagesToSendChannel is not null ?
         MessagesToSendChannel!.Writer.WriteAsync(msg) :
-        ValueTask.CompletedTask; // Not throwing exception if user tried to send message whilst WebSocket is not connected
+        ValueTask.CompletedTask;
 
     private async Task SendMessageAsync(WebSocketMessage msg, CancellationToken cancellationToken = default)
     {
@@ -268,17 +279,17 @@ public abstract class WebSocketConnector
             else
             {
                 buffer = ArrayPool<byte>.Shared.Rent(bufferSize);
-                Array.Clear(buffer);
                 msg.BytesStream.Seek(0, SeekOrigin.Begin);
-#pragma warning disable CA1835
-                while (!cancellationToken.IsCancellationRequested
-                    && await msg.BytesStream.ReadAsync(buffer, 0, buffer.Length, cancellationToken) > 0)
+
+                while (!cancellationToken.IsCancellationRequested)
                 {
-#pragma warning restore CA1835
-                    var trimmedBuffer = buffer.AsMemory().TrimEnd((byte)0);
-                    var flags = msg.DetermineFlags();
-                    await this.ws!.SendAsync(trimmedBuffer, msg.Type, flags, cancellationToken);
-                    Array.Clear(buffer);
+                    int bufferBytesRead = await msg.BytesStream.ReadAsync(buffer.AsMemory(), cancellationToken);
+                    if (bufferBytesRead == 0)
+                    {
+                        break;
+                    }
+
+                    await this.ws!.SendAsync(buffer.AsMemory(0, bufferBytesRead), msg.Type, msg.DetermineFlags(), cancellationToken);
                 }
                 ArrayPool<byte>.Shared.Return(buffer);
                 buffer = null;
@@ -302,7 +313,7 @@ public abstract class WebSocketConnector
         }
     }
 
-    #endregion
+#endregion
 
     #region RECEIVE MESSAGES
 
@@ -310,18 +321,15 @@ public abstract class WebSocketConnector
     {
         using MemoryStream accumulator = new();
         byte[]? buffer = ArrayPool<byte>.Shared.Rent(bufferSize);
-        Array.Clear(buffer);
+        var bufferAsMemory = buffer.AsMemory();
         ValueWebSocketReceiveResult receivalResult;
 
         try
         {
             do
             {
-                var mem = buffer.AsMemory();
-                receivalResult = await this.ws!.ReceiveAsync(mem, disconnectToken);
-                var trimmedBuffer = mem.TrimEnd((byte)0);
-                await accumulator.WriteAsync(trimmedBuffer, disconnectToken);
-                Array.Clear(buffer);
+                receivalResult = await this.ws!.ReceiveAsync(bufferAsMemory, disconnectToken);
+                await accumulator.WriteAsync(bufferAsMemory.Slice(0, receivalResult.Count), disconnectToken);
             }
             while (IsReceivingMessage(receivalResult) && !disconnectToken.IsCancellationRequested);
 
@@ -366,7 +374,7 @@ public abstract class WebSocketConnector
 
             if (!string.IsNullOrWhiteSpace(this.ws?.CloseStatusDescription))
             {
-                WebSocketMessage closingMsg = new(OppositeDirection, WebSocketMessageType.Close, this.ws.CloseStatusDescription, false);
+                WebSocketMessage closingMsg = new(OppositeDirection, WebSocketMessageType.Close, this.ws!.CloseStatusDescription, false);
                 this.exchangedMessagesCollectorWriter?.TryWrite(closingMsg);
             }
 
@@ -418,6 +426,6 @@ public abstract class WebSocketConnector
         }
     }
 
-    #endregion
+#endregion
 
 }

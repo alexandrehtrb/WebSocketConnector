@@ -1,8 +1,8 @@
-using WebSocketApiExample.Configurations;
-using WebSocketApiExample.Endpoints;
+using TestServer.Configurations;
+using TestServer.Endpoints;
 using Serilog;
 
-namespace WebSocketApiExample;
+namespace TestServer;
 
 public static class Program
 {

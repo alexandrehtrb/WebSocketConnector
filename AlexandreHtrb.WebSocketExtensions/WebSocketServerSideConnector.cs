@@ -1,4 +1,6 @@
-namespace System.Net.WebSockets;
+using System.Net.WebSockets;
+
+namespace AlexandreHtrb.WebSocketExtensions;
 
 public sealed class WebSocketServerSideConnector : WebSocketConnector
 {

@@ -482,3 +482,7 @@ $RECYCLE.BIN/
 
 # Vim temporary swap files
 *.swp
+
+# Received images through WebSockets
+[Tt]estClient/received_img.jpg
+[Tt]estServer/received_img.jpg

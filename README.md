@@ -2,32 +2,292 @@
 
 [Ler em português](README_pt.md)
 
-This project is a custom abstraction layer built on top of `System.Net.WebSockets` standard implementations, to handle WebSocket lifecycle, parse and convert messages from / to binary representations.
+This project is a custom abstraction layer built on top of `System.Net.WebSockets` standard implementations, to handle WebSocket lifecycle, parse and convert messages from / to byte arrays. The abstractions are for both client-side and server-side (ASP.NET).
+
+It has full compatibility with NativeAOT and trimming.
+
+- [How to use](#how-to-use)
+  - [Example code, server](#example-code-server)
+  - [Example code, client](#example-code-client)
+- [WebSockets configuration on ASP.NET](#websockets-configuration-on-asp-net)
+- [Tips and tricks](#tips-and-tricks)
+  - [Monitor connection state](#monitor-connection-state)
+  - [Periodically send a message](#periodically-send-a-message)
+  - [End conversation after a certain amount of time](#end-conversation-after-a-certain-amount-of-time)
+  - [Retrieve HTTP status code and response headers](#retrieve-http-status-code-and-response-headers)
+  - [Authentication and request headers](#authentication-and-request-headers)
+  - [Subprotocols](#subprotocols)
+  - [Message compression](#message-compression)
+  - [WebSockets over HTTP/2](#websockets-over-http-2)
 
 ## How to use
 
-1) Copy the `WebSocketExtensions` folder to your project's folder.
-2) If you want to use this connector for a client, check out the [ConsoleExample](./ConsoleExample/Program.cs) code.
-3) If you want to use this connector on a server endpoint, check out the [ApiExample](./ApiExample/Endpoints/BackgroundWebSocketsProcessor.cs) code.
+It's quite simple to use. The `WebSocketServerSideConnector` and `WebSocketClientSideConnector` classes receive native `WebSocket` objects from .NET and take care of all WebSocket's lifecycle, connection and disconnection, receiving and sending messages, and conversion from/to byte arrays.
 
-### Sample code
+Inside each connector there is an `ExchangedMessagesCollector`, which collects the messages sent and received, and makes them available through an `IAsyncEnumerable`. Thus, the conversation between client and server goes inside an asynchronous `await foreach` loop. When one of the parties disconnects, the execution leaves the loop.
+
+Before entering the conversation loop, one of the parties must take the initiative to send a message.
+
+### Example code, server
 
 ```cs
 WebSocketServerSideConnector wsc = new(ws);
 
 await foreach (var msg in wsc.ExchangedMessagesCollector!.ReadAllAsync())
 {
-    string msgText = msg.ReadAsUtf8Text()!;
-
     if (msg.Direction == WebSocketMessageDirection.FromServer)
-        continue;
+        continue; // ignore msgs from own side
 
-    await wsc.SendMessageAsync(WebSocketMessageType.Text, msgText switch
+    await wsc.SendMessageAsync(WebSocketMessageType.Text, msg.ReadAsUtf8Text() switch
     {
         "Hello!" => "Hi!",
         "What time is it?" => "Now it's " + DateTime.Now.TimeOfDay,
         "Thanks!" => "You're welcome!",
-        _ => "I don't understand this message!"
+        _ => "I don't understand your message!"
     }, false);
 }
+```
+
+### Example code, client
+
+```cs
+using var cws = MakeClientWebSocket();
+using var hc = MakeHttpClient(disableSslVerification: true);
+Uri uri = new("ws://localhost:5000/test/http1websocket");
+WebSocketClientSideConnector wsc = new();
+
+// Connecting
+await wsc.ConnectAsync(cws, hc, uri, cancellationToken);
+
+// Sending first message
+await wsc.SendMessageAsync(WebSocketMessageType.Text, "Hello!", false);
+
+// Conversation loop
+await foreach (var msg in wsc.ExchangedMessagesCollector!.ReadAllAsync())
+{
+    if (msg.Direction == WebSocketMessageDirection.FromClient)
+        continue; // ignore msgs from own side
+
+    await wsc.SendMessageAsync(WebSocketMessageType.Text, msg.ReadAsUtf8Text() switch
+    {
+        "Hi!" => "What time is it?",
+        string s when s.StartsWith("Now it's") => "Thanks!",
+        _ => "I don't understand your message!"
+    }, false);
+}
+```
+
+With the code above, the conversation should go on like this:
+
+```
+Client: Hello!
+Server: Hi!
+Client: What time is it?
+Server: Now it's 11:54:53
+Client: Thanks!
+Server: You're welcome!
+```
+
+## WebSockets configuration on ASP.NET
+
+1) Enable `app.UseWebSockets()`:
+
+```cs
+private static IApplicationBuilder ConfigureApp(this WebApplication app) =>
+	app.MapTestEndpoints()
+	   .UseWebSockets(new()
+	   {
+		   KeepAliveInterval = TimeSpan.FromMinutes(2)
+	   });
+```
+
+2) Map the WebSocket endpoint:
+
+```cs
+public static WebApplication MapTestEndpoints(this WebApplication app)
+{
+	app.MapGet("test/http1websocket", TestHttp1WebSocket);
+	return app;
+}
+
+private static async Task TestHttp1WebSocket(HttpContext httpCtx, ILogger<BackgroundWebSocketsProcessor> logger)
+{
+	if (!httpCtx.WebSockets.IsWebSocketRequest)
+	{
+		byte[] txtBytes = Encoding.UTF8.GetBytes("Only WebSockets requests are accepted here!");
+		httpCtx.Response.StatusCode = (int)HttpStatusCode.BadRequest;
+		await httpCtx.Response.BodyWriter.WriteAsync(txtBytes);
+	}
+	else
+	{
+		using var webSocket = await httpCtx.WebSockets.AcceptWebSocketAsync();
+		TaskCompletionSource<object> socketFinishedTcs = new();
+
+		await BackgroundWebSocketsProcessor.RegisterAndProcessAsync(logger, webSocket, socketFinishedTcs);
+		await socketFinishedTcs.Task;
+	}
+}
+```
+
+3) Create a WebSocket processor:
+
+```cs
+using AlexandreHtrb.WebSocketExtensions;
+using System.Net.WebSockets;
+
+public static class BackgroundWebSocketsProcessor
+{
+    private static readonly TimeSpan maximumLifetimePeriod = TimeSpan.FromSeconds(6);
+
+    public static async Task RegisterAndProcessAsync(ILogger<BackgroundWebSocketsProcessor> logger, WebSocket ws, TaskCompletionSource<object> socketFinishedTcs)
+    {
+        WebSocketServerSideConnector wsc = new(ws);
+
+        int msgCount = 0;
+        await foreach (var msg in wsc.ExchangedMessagesCollector!.ReadAllAsync())
+        {
+            msgCount++;
+            string msgText = msg.Type switch
+            {
+                WebSocketMessageType.Text or WebSocketMessageType.Close => msg.ReadAsUtf8Text()!,
+                WebSocketMessageType.Binary when msg.BytesStream is MemoryStream ms => $"(binary, {ms.Length} bytes)",
+                WebSocketMessageType.Binary when msg.BytesStream is not MemoryStream => $"(binary, ? bytes)",
+                _ => "(unknown)"
+            };
+            logger.LogInformation("Message {msgCount}, {direction}: {msgText}", msgCount, msg.Direction, msgText);
+
+            if (msg.Direction == WebSocketMessageDirection.FromServer)
+				continue; // ignore msgs from own side
+				
+			// handle messages here
+		}
+		
+		socketFinishedTcs.SetResult(true); // finish connection
+	}
+}
+```
+
+## Tips and tricks
+
+### Monitor connection state
+
+```cs
+wsc.OnConnectionChanged = (state, exception) =>
+{
+    logger.LogInformation("Connection state: {state}", state);
+    logger.LogError(exception, "Connection exception");
+};
+```
+
+Here we can put connection retries.
+
+### Periodically send a message
+
+```cs
+while (!cancellationToken.IsCancellationRequested)
+{
+	_ = Task.Run(async () =>
+	{
+		await Task.Delay(TimeSpan.FromSeconds(15));
+		await wsc.SendMessageAsync(WebSocketMessageType.Text, "Are you there?", false);
+	});
+}
+```
+
+### End conversation after a certain amount of time
+
+```cs
+_ = Task.Run(async () =>
+{
+    await Task.Delay(maximumLifetimePeriod);
+    await wsc.DisconnectAsync();
+});
+```
+
+### Retrieve HTTP status code and response headers
+
+```cs
+ClientWebSocket cws = new();
+cws.Options.CollectHttpResponseDetails = true;
+
+await wsc.ConnectAsync(cws, hc, uri, cancellationToken);
+
+var wsHttpStatusCode = wsc.ConnectionHttpStatusCode;
+var wsResponseHeaders = wsc.ConnectionHttpHeaders;
+```
+
+### Authentication and request headers
+
+```cs
+ClientWebSocket cws = new();
+cws.Options.SetRequestHeader("Authorization", "Bearer my_token");
+cws.Options.SetRequestHeader("Header1", "Value1");
+
+await wsc.ConnectAsync(cws, hc, uri, cancellationToken);
+```
+
+### Subprotocols
+
+#### Client-side
+
+```cs
+ClientWebSocket cws = new();
+cws.Options.AddSubProtocol("subprotocol1");
+
+await wsc.ConnectAsync(cws, hc, uri, cancellationToken);
+```
+
+#### Server-side
+
+```diff
+private static async Task TestHttp1WebSocket(HttpContext httpCtx, ILogger<BackgroundWebSocketsProcessor> logger)
+{
+	if (!httpCtx.WebSockets.IsWebSocketRequest)
+	{
+		// ...
+	}
+	else
+	{
+		using var webSocket = await httpCtx.WebSockets.AcceptWebSocketAsync();
+		TaskCompletionSource<object> socketFinishedTcs = new();
++		string? subprotocol = webSocket.SubProtocol ?? httpCtx.WebSockets.WebSocketRequestedProtocols.FirstOrDefault();
+
+		await BackgroundWebSocketsProcessor.RegisterAndProcessAsync(logger, webSocket, subprotocol, socketFinishedTcs);
+		await socketFinishedTcs.Task;
+	}
+}
+```
+
+### Message compression
+
+```cs
+ClientWebSocket cws = new();
+cws.Options.DangerousDeflateOptions = new()
+{
+    ClientContextTakeover = true,
+    ClientMaxWindowBits = 14,
+    ServerContextTakeover = true,
+    ServerMaxWindowBits = 14
+};
+
+await wsc.ConnectAsync(cws, hc, uri, cancellationToken);
+```
+
+**Important:** Don't pass secrets and encrypted texts in compressed messages, because there is the risk of [BREACH and CRIME attacks](https://www.breachattack.com/). In these cases, disable compression for those messages:
+
+```cs
+await wsc.SendMessageAsync(
+    WebSocketMessageType.Text,
+    $"Encrypted token {token}",
+    disableCompression: true);
+```
+
+### WebSockets over HTTP/2
+
+```cs
+ClientWebSocket cws = new();
+cws.Options.HttpVersionPolicy = HttpVersionPolicy.RequestVersionExact;
+cws.Options.HttpVersion = new(2,0);
+
+await wsc.ConnectAsync(cws, hc, uri, cancellationToken);
 ```

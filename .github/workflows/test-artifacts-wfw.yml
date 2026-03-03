@@ -1,0 +1,82 @@
+name: Generate test server and client
+
+on:
+  workflow_dispatch:
+    inputs:
+      nativeAot:
+        required: true
+        default: true
+        type: boolean
+
+jobs:
+  cicd:
+  
+    runs-on: ubuntu-latest
+
+    # start CI steps
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v6
+      with:
+        fetch-depth: 1
+
+    - name: Install .NET
+      uses: actions/setup-dotnet@v5
+      with:
+        dotnet-version: 10.x
+
+    - name: Restore solution
+      run: dotnet restore --nologo --verbosity quiet
+
+    - name: Build solution
+      run: dotnet build --no-restore --configuration Release --nologo --verbosity quiet
+
+    - name: Generate TestServer DLLs
+      shell: pwsh
+      run: |
+        $OUTPUT_FOLDER = "./out/linux-x64/TestServer"
+        
+        [void](New-Item $OUTPUT_FOLDER -ItemType Directory -ErrorAction Ignore);
+        
+        dotnet publish ./TestServer/TestServer.csproj `
+        --verbosity quiet `
+        --nologo `
+        --configuration Release `
+        --runtime linux-x64 `
+        -p:TreatWarningsAsErrors=True `
+        -p:PublishAot=${env:NATIVEAOT} `
+        --output $OUTPUT_FOLDER;
+        
+        chmod +x "$OUTPUT_FOLDER/TestServer"
+      env:
+        NATIVEAOT: ${{ inputs.nativeAot }}
+    
+    - name: Generate TestClient DLLs
+      shell: pwsh
+      run: |
+        $OUTPUT_FOLDER = "./out/linux-x64/TestClient"
+        
+        [void](New-Item $OUTPUT_FOLDER -ItemType Directory -ErrorAction Ignore);
+        
+        dotnet publish ./TestClient/TestClient.csproj `
+        --verbosity quiet `
+        --nologo `
+        --configuration Release `
+        --runtime linux-x64 `
+        -p:TreatWarningsAsErrors=True `
+        -p:PublishAot=${env:NATIVEAOT} `
+        --output $OUTPUT_FOLDER;
+        
+        chmod +x "$OUTPUT_FOLDER/TestClient"
+      env:
+        NATIVEAOT: ${{ inputs.nativeAot }}
+
+    - name: Upload artifacts to workflow results
+      if: ${{ inputs.runCD }}
+      uses: actions/upload-artifact@v7
+      with:
+        compression-level: 6
+        name: 'TestServerAndClient_linux-x64.zip'
+        path: './out/linux-x64'
+        overwrite: true

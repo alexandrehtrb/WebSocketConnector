@@ -1,4 +1,7 @@
-namespace System.Net.WebSockets;
+using System.Net;
+using System.Net.WebSockets;
+
+namespace AlexandreHtrb.WebSocketExtensions;
 
 public sealed class WebSocketClientSideConnector : WebSocketConnector
 {
@@ -31,10 +34,9 @@ public sealed class WebSocketClientSideConnector : WebSocketConnector
     protected override void SetupAfterConnected(WebSocket ws)
     {
         base.SetupAfterConnected(ws);
-
         ConnectionHttpStatusCode = ((ClientWebSocket)ws).HttpStatusCode;
         ConnectionHttpHeaders = ((ClientWebSocket)ws).HttpResponseHeaders;
     }
 
-    #endregion
+#endregion
 }

@@ -1,0 +1,28 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFrameworks>net8.0;net10.0</TargetFrameworks>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <TreatWarningsAsErrors>True</TreatWarningsAsErrors>
+    <IsTrimmable>True</IsTrimmable>
+    <IsAotCompatible>True</IsAotCompatible>
+
+    <!-- To generate the package: 'dotnet pack -c Release' -->
+    <PackageId>AlexandreHtrb.WebSocketExtensions</PackageId>
+    <PackageVersion>0.0.1</PackageVersion>
+    <Description>Package for handling WebSocket lifecycle and message parsing on .NET.</Description>
+    <RepositoryUrl>https://github.com/alexandrehtrb/AlexandreHtrb.WebSocketExtensions.git</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <Authors>Alexandre H. T. R. Bonfitto</Authors>
+    <Copyright>AlexandreHTRB</Copyright>
+    <PackageLicenseFile>LICENCE.md</PackageLicenseFile>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="..\LICENCE.md" Pack="true" PackagePath="\" />
+    <None Include="..\README.md" Pack="true" PackagePath="\" />
+  </ItemGroup>
+
+</Project>

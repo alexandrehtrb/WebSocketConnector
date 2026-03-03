@@ -1,4 +1,4 @@
-namespace WebSocketApiExample.Configurations;
+namespace TestServer.Configurations;
 
 public static class SerilogConfiguration
 {

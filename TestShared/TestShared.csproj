@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <AssemblyName>TestShared</AssemblyName>
+    <RootNamespace>TestShared</RootNamespace>
+    <TargetFrameworks>net10.0</TargetFrameworks>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <TreatWarningsAsErrors>True</TreatWarningsAsErrors>
+    <IsTrimmable>True</IsTrimmable>
+    <IsAotCompatible>True</IsAotCompatible>
+  </PropertyGroup>
+
+</Project>

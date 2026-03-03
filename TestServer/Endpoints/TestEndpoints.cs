@@ -1,17 +1,15 @@
+using AlexandreHtrb.WebSocketExtensions;
 using System.Net;
-using System.Net.WebSockets;
 using System.Text;
-using Microsoft.AspNetCore.WebUtilities;
-using Microsoft.Net.Http.Headers;
 
-namespace WebSocketApiExample.Endpoints;
+namespace TestServer.Endpoints;
 
 public static class TestEndpoints
 {
     public static WebApplication MapTestEndpoints(this WebApplication app)
     {
-        app.MapGet("test/http1websocket", (Delegate)TestHttp1WebSocket);
-        app.MapConnect("test/http2websocket", (Delegate)TestHttp2WebSocket);
+        app.MapGet("test/http1websocket", TestHttp1WebSocket);
+        app.MapMethods("test/http2websocket", new[] { HttpMethods.Connect }, TestHttp2WebSocket);
         return app;
     }
 

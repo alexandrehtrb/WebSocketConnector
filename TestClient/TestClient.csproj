@@ -1,0 +1,33 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <TreatWarningsAsErrors>True</TreatWarningsAsErrors>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>True</IsTestProject>
+    <PublishAot>True</PublishAot>
+    <OptimizationPreference Condition="'$(PublishAot)' == 'True'">Speed</OptimizationPreference>
+    <PublishTrimmed Condition="'$(PublishAot)' == 'True'">True</PublishTrimmed>
+    <TrimMode Condition="'$(PublishAot)' == 'True'">Full</TrimMode>    
+  </PropertyGroup>
+  
+  <ItemGroup>
+    <ProjectReference Include="..\TestShared\TestShared.csproj" />
+    <ProjectReference Include="..\AlexandreHtrb.WebSocketExtensions\AlexandreHtrb.WebSocketExtensions.csproj" />
+    <!--PackageReference Include="AlexandreHtrb.WebSocketExtensions" Version="0.0.1" /-->
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.0.1" />
+    <PackageReference Include="xunit.v3" Version="3.2.2" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="3.1.5">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+    <PackageReference Include="coverlet.collector" Version="8.0.0">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+  </ItemGroup>
+
+</Project>
