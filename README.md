@@ -9,7 +9,7 @@ It has full compatibility with NativeAOT and trimming.
 - [How to use](#how-to-use)
   - [Example code, server](#example-code-server)
   - [Example code, client](#example-code-client)
-- [WebSockets configuration on ASP.NET](#websockets-configuration-on-asp-net)
+- [WebSockets configuration on ASP.NET](#websockets-configuration-on-aspnet)
 - [Tips and tricks](#tips-and-tricks)
   - [Monitor connection state](#monitor-connection-state)
   - [Periodically send a message](#periodically-send-a-message)
@@ -18,7 +18,7 @@ It has full compatibility with NativeAOT and trimming.
   - [Authentication and request headers](#authentication-and-request-headers)
   - [Subprotocols](#subprotocols)
   - [Message compression](#message-compression)
-  - [WebSockets over HTTP/2](#websockets-over-http-2)
+  - [WebSockets over HTTP/2](#websockets-over-http2)
 
 ## How to use
 
@@ -137,8 +137,6 @@ using System.Net.WebSockets;
 
 public static class BackgroundWebSocketsProcessor
 {
-    private static readonly TimeSpan maximumLifetimePeriod = TimeSpan.FromSeconds(6);
-
     public static async Task RegisterAndProcessAsync(ILogger<BackgroundWebSocketsProcessor> logger, WebSocket ws, TaskCompletionSource<object> socketFinishedTcs)
     {
         WebSocketServerSideConnector wsc = new(ws);
@@ -284,10 +282,24 @@ await wsc.SendMessageAsync(
 
 ### WebSockets over HTTP/2
 
+#### Client-side
+
 ```cs
 ClientWebSocket cws = new();
 cws.Options.HttpVersionPolicy = HttpVersionPolicy.RequestVersionExact;
 cws.Options.HttpVersion = new(2,0);
 
 await wsc.ConnectAsync(cws, hc, uri, cancellationToken);
+```
+
+#### Server-side
+
+On HTTP/2 WebSockets, the HTTP method CONNECT is used, instead of GET.
+
+```cs
+public static WebApplication MapTestEndpoints(this WebApplication app)
+{
+	app.MapMethods("test/http2websocket", new[] { HttpMethods.Connect }, TestHttp2WebSocket);
+	return app;
+}
 ```

@@ -9,16 +9,16 @@ Ele é compatível com compilação NativeAOT e trimming.
 - [Como usar](#como-usar)
   - [Código de exemplo, servidor](#código-de-exemplo-servidor)
   - [Código de exemplo, cliente](#código-de-exemplo-cliente)
-- [Configuração de WebSockets no ASP.NET](#configuração-de-websockets-no-asp-net)
+- [Configuração de WebSockets no ASP.NET](#configuração-de-websockets-no-aspnet)
 - [Dicas](#dicas)
   - [Monitorar estado da conexão](#monitorar-estado-da-conexão)
   - [Enviar mensagem periodicamente](#enviar-mensagem-periodicamente)
   - [Encerrar conversa após determinado tempo](#encerrar-conversa-após-determinado-tempo)
   - [Pegar HTTP status code e headers de resposta](#pegar-http-status-code-e-headers-de-resposta)
-  - [Autenticação e headers de requisição](#autenticação-e-headers-adicionais-de-requisição)
+  - [Autenticação e headers de requisição](#autenticação-e-headers-de-requisição)
   - [Subprotocolos](#subprotocolos)
   - [Compressão de mensagens](#compressão-de-mensagens)
-  - [WebSockets em HTTP/2](#websockets-em-http-2)
+  - [WebSockets em HTTP/2](#websockets-em-http2)
 
 ## Como usar
 
@@ -137,8 +137,6 @@ using System.Net.WebSockets;
 
 public static class BackgroundWebSocketsProcessor
 {
-    private static readonly TimeSpan maximumLifetimePeriod = TimeSpan.FromSeconds(6);
-
     public static async Task RegisterAndProcessAsync(ILogger<BackgroundWebSocketsProcessor> logger, WebSocket ws, TaskCompletionSource<object> socketFinishedTcs)
     {
         WebSocketServerSideConnector wsc = new(ws);
@@ -284,10 +282,24 @@ await wsc.SendMessageAsync(
 
 ### WebSockets em HTTP/2
 
+#### Do lado do cliente
+
 ```cs
 ClientWebSocket cws = new();
 cws.Options.HttpVersionPolicy = HttpVersionPolicy.RequestVersionExact;
 cws.Options.HttpVersion = new(2,0);
 
 await wsc.ConnectAsync(cws, hc, uri, cancellationToken);
+```
+
+#### Do lado do servidor
+
+Em WebSockets HTTP/2, o método HTTP CONNECT é usado, ao invés de GET.
+
+```cs
+public static WebApplication MapTestEndpoints(this WebApplication app)
+{
+	app.MapMethods("test/http2websocket", new[] { HttpMethods.Connect }, TestHttp2WebSocket);
+	return app;
+}
 ```
