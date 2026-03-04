@@ -28,7 +28,7 @@ Adicionar [pacote NuGet](https://www.nuget.org/packages/AlexandreHtrb.WebSocketE
 
 ```xml
 <ItemGroup>
-    <PackageReference Include="AlexandreHtrb.WebSocketExtensions" Version="1.0.0" />
+    <PackageReference Include="AlexandreHtrb.WebSocketExtensions" Version="1.0.1" />
 </ItemGroup>
 ```
 
