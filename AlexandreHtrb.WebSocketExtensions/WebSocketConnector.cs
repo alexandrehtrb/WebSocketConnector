@@ -337,13 +337,18 @@ public abstract class WebSocketConnector
             buffer = null;
 
             var msgType = receivalResult.MessageType;
-            accumulator.Seek(0, SeekOrigin.Begin);
-            WebSocketMessage? msg =
-                (msgType == WebSocketMessageType.Close && !string.IsNullOrWhiteSpace(this.ws.CloseStatusDescription)) ?
-                new(OppositeDirection, msgType, this.ws.CloseStatusDescription!, false) :
-                accumulator.Length > 0 ?
-                new(OppositeDirection, msgType, accumulator, false) :
-                null;
+            
+            WebSocketMessage? msg = null;
+            
+            if (msgType == WebSocketMessageType.Close && !string.IsNullOrWhiteSpace(this.ws.CloseStatusDescription))
+            {
+                msg = new(OppositeDirection, msgType, this.ws.CloseStatusDescription!, false);
+            }
+            else if (accumulator.Length > 0)
+            {
+                accumulator.Seek(0, SeekOrigin.Begin);
+                msg = new(OppositeDirection, msgType, accumulator, false);
+            }
 
             if (msg is not null)
             {
