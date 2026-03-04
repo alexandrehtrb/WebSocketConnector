@@ -76,8 +76,13 @@ public static class BackgroundWebSocketsProcessor
                     var personReceived = msg.ReadAsUtf8Json(AppJsonSrcGenContext.Default.Person)!;
                     logger.LogInformation("Received Person JSON:\nName: {name}\nAge: {age}\nBlood type: {bloodType}", personReceived.Name, personReceived.Age, ConvertToString(personReceived.BloodType));
                     break;
-                case (WebSocketMessageType.Text, "I can't leave without you!"):
+                case (WebSocketMessageType.Text, "I can't live without you!"):
                     await wsc.SendMessageAsync(WebSocketMessageType.Close, "Yes, you can. Bye!", false);
+                    break;
+                case (WebSocketMessageType.Text, "Throw an Exception!"):
+                    throw new Exception("AI MORREU");
+                case (WebSocketMessageType.Text, "Make me throw an Exception!"):
+                    await wsc.SendMessageAsync(WebSocketMessageType.Text, "Throw an Exception!", false);
                     break;
                 case (WebSocketMessageType.Text, "Which subprotocol are we on?"):
                     await wsc.SendMessageAsync(WebSocketMessageType.Text, subprotocol switch

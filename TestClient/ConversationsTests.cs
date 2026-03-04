@@ -212,7 +212,7 @@ public class ConversationsTests
 
         Assert.AreEqual(WebSocketMessageDirection.FromClient, msgs[2].Direction);
         Assert.AreEqual(WebSocketMessageType.Text, msgs[2].Type);
-        Assert.AreEqual("I can't leave without you!", msgs[2].ReadAsUtf8Text());
+        Assert.AreEqual("I can't live without you!", msgs[2].ReadAsUtf8Text());
 
         Assert.AreEqual(WebSocketMessageDirection.FromServer, msgs[3].Direction);
         Assert.AreEqual(WebSocketMessageType.Close, msgs[3].Type);
@@ -265,6 +265,39 @@ public class ConversationsTests
             Assert.AreEqual(WebSocketMessageType.Text, msgs[3].Type);
             Assert.AreEqual("We are on subprotocol 'gamma'.", msgs[3].ReadAsUtf8Text());
         }
+    }
+
+    [TestMethod]
+    [DataRow(1.1d, "ws://localhost:5000/test/http1websocket")]
+    [DataRow(2.0d, "wss://localhost:5001/test/http2websocket")]
+    public async Task Should_run_WebSocket_conversation_successfully_where_server_throws_exception(double httpVersion, string url)
+    {
+        // GIVEN
+        using var cws = MakeClientWebSocket((decimal)httpVersion);
+        using var hc = MakeHttpClient(disableSslVerification: true);
+        var wsc = new WebSocketClientSideConnector();
+        var uri = new Uri(url);
+        await wsc.ConnectAsync(cws, hc, uri, default);
+
+        // WHEN AND THEN
+        Assert.AreEqual(WebSocketConnectionState.Connected, wsc.ConnectionState);
+        var msgs = await new ServerExceptionConversation(wsc).RunAsync(default);
+        Assert.AreEqual(WebSocketConnectionState.Disconnected, wsc.ConnectionState);
+
+        // THEN
+        Assert.AreEqual(3, msgs.Count);
+
+        Assert.AreEqual(WebSocketMessageDirection.FromClient, msgs[0].Direction);
+        Assert.AreEqual(WebSocketMessageType.Text, msgs[0].Type);
+        Assert.AreEqual("Hello!", msgs[0].ReadAsUtf8Text());
+
+        Assert.AreEqual(WebSocketMessageDirection.FromServer, msgs[1].Direction);
+        Assert.AreEqual(WebSocketMessageType.Text, msgs[1].Type);
+        Assert.AreEqual("Hi!", msgs[1].ReadAsUtf8Text());
+
+        Assert.AreEqual(WebSocketMessageDirection.FromClient, msgs[2].Direction);
+        Assert.AreEqual(WebSocketMessageType.Text, msgs[2].Type);
+        Assert.AreEqual("Throw an Exception!", msgs[2].ReadAsUtf8Text());
     }
 
     internal static async Task<bool> CheckIfFilesContentsAreEqualAsync(string filePath1, string filePath2)
