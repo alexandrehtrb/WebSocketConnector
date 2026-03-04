@@ -319,7 +319,7 @@ public abstract class WebSocketConnector
 
     private async Task<WebSocketMessage?> ReceiveMessageAsync(CancellationToken disconnectToken)
     {
-        using MemoryStream accumulator = new();
+        MemoryStream accumulator = new();
         byte[]? buffer = ArrayPool<byte>.Shared.Rent(bufferSize);
         var bufferAsMemory = buffer.AsMemory();
         ValueWebSocketReceiveResult receivalResult;
@@ -337,11 +337,12 @@ public abstract class WebSocketConnector
             buffer = null;
 
             var msgType = receivalResult.MessageType;
+            accumulator.Seek(0, SeekOrigin.Begin);
             WebSocketMessage? msg =
                 (msgType == WebSocketMessageType.Close && !string.IsNullOrWhiteSpace(this.ws.CloseStatusDescription)) ?
                 new(OppositeDirection, msgType, this.ws.CloseStatusDescription!, false) :
                 accumulator.Length > 0 ?
-                new(OppositeDirection, msgType, accumulator.ToArray(), false) :
+                new(OppositeDirection, msgType, accumulator, false) :
                 null;
 
             if (msg is not null)
