@@ -186,9 +186,9 @@ Here we can put connection retries.
 ### Collect sent messages
 
 ```cs
-WebSocketServerSideConnector wsc = new(ws, collectOnlyClientSideMessages: true);
+WebSocketServerSideConnector wsc = new(ws, collectOnlyClientSideMessages: false);
 
-WebSocketClientSideConnector wsc = new(collectOnlyServerSideMessages: true);
+WebSocketClientSideConnector wsc = new(collectOnlyServerSideMessages: false);
 ```
 
 The booleans control whether only messages from the opposite side will be collected. Collecting messages from the own side may be interesting for logging.

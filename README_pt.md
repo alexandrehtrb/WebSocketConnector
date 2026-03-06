@@ -186,9 +186,9 @@ Aqui é possível colocar tentativas de reconexão.
 ### Coletar mensagens enviadas
 
 ```cs
-WebSocketServerSideConnector wsc = new(ws, collectOnlyClientSideMessages: true);
+WebSocketServerSideConnector wsc = new(ws, collectOnlyClientSideMessages: false);
 
-WebSocketClientSideConnector wsc = new(collectOnlyServerSideMessages: true);
+WebSocketClientSideConnector wsc = new(collectOnlyServerSideMessages: false);
 ```
 
 Os booleanos controlam se apenas as mensagens vindas do lado oposto serão coletadas. Coletar mensagens do próprio lado pode ser interessante para logs.
