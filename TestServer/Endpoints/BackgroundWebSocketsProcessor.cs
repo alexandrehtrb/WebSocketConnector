@@ -11,7 +11,7 @@ public static class BackgroundWebSocketsProcessor
 
     public static async Task RegisterAndProcessAsync(ILogger<WebSocketServerSideConnector> logger, WebSocket ws, string? subprotocol, TaskCompletionSource<object> socketFinishedTcs)
     {
-        WebSocketServerSideConnector wsc = new(ws);
+        WebSocketServerSideConnector wsc = new(ws, collectOnlyClientSideMessages: false);
 
         _ = Task.Run(async () =>
         {

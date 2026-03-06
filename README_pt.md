@@ -13,6 +13,7 @@ Ele é compatível com compilação NativeAOT e trimming.
 - [Configuração de WebSockets no ASP.NET](#configuração-de-websockets-no-aspnet)
 - [Dicas](#dicas)
   - [Monitorar estado da conexão](#monitorar-estado-da-conexão)
+  - [Coletar mensagens enviadas](#coletar-mensagens-enviadas)
   - [Enviar mensagem periodicamente](#enviar-mensagem-periodicamente)
   - [Encerrar conversa após determinado tempo](#encerrar-conversa-após-determinado-tempo)
   - [Envio de arquivos](#envio-de-arquivos)
@@ -43,13 +44,10 @@ Antes de entrar no loop da conversa, uma das partes deve ter a iniciativa de man
 ### Código de exemplo, servidor
 
 ```cs
-WebSocketServerSideConnector wsc = new(ws);
+WebSocketServerSideConnector wsc = new(ws, collectOnlyClientSideMessages: true);
 
 await foreach (var msg in wsc.ExchangedMessagesCollector!.ReadAllAsync())
 {
-    if (msg.Direction == WebSocketMessageDirection.FromServer)
-        continue; // ignorar msgs do próprio lado
-
     await wsc.SendMessageAsync(WebSocketMessageType.Text, msg.ReadAsUtf8Text() switch
     {
         "Olá!" => "Oi!",
@@ -66,7 +64,7 @@ await foreach (var msg in wsc.ExchangedMessagesCollector!.ReadAllAsync())
 using var cws = MakeClientWebSocket();
 using var hc = MakeHttpClient(disableSslVerification: true);
 Uri uri = new("ws://localhost:5000/test/http1websocket");
-WebSocketClientSideConnector wsc = new();
+WebSocketClientSideConnector wsc = new(collectOnlyServerSideMessages: true);
 
 // Conectando
 await wsc.ConnectAsync(cws, hc, uri, cancellationToken);
@@ -77,9 +75,6 @@ await wsc.SendMessageAsync(WebSocketMessageType.Text, "Olá!", false);
 // Loop da conversa
 await foreach (var msg in wsc.ExchangedMessagesCollector!.ReadAllAsync())
 {
-    if (msg.Direction == WebSocketMessageDirection.FromClient)
-        continue; // ignorar msgs do próprio lado
-
     await wsc.SendMessageAsync(WebSocketMessageType.Text, msg.ReadAsUtf8Text() switch
     {
         "Oi!" => "Que horas são?",
@@ -151,7 +146,7 @@ public static class BackgroundWebSocketsProcessor
 {
     public static async Task RegisterAndProcessAsync(ILogger<BackgroundWebSocketsProcessor> logger, WebSocket ws, TaskCompletionSource<object> socketFinishedTcs)
     {
-        WebSocketServerSideConnector wsc = new(ws);
+        WebSocketServerSideConnector wsc = new(ws, collectOnlyClientSideMessages: true);
 
         int msgCount = 0;
         await foreach (var msg in wsc.ExchangedMessagesCollector!.ReadAllAsync())
@@ -166,9 +161,6 @@ public static class BackgroundWebSocketsProcessor
             };
             logger.LogInformation("Message {msgCount}, {direction}: {msgText}", msgCount, msg.Direction, msgText);
 
-            if (msg.Direction == WebSocketMessageDirection.FromServer)
-                continue; // ignorar msgs do próprio lado
-                
             // tratamento das mensagens aqui
         }
         
@@ -190,6 +182,16 @@ wsc.OnConnectionChanged = (state, exception) =>
 ```
 
 Aqui é possível colocar tentativas de reconexão.
+
+### Coletar mensagens enviadas
+
+```cs
+WebSocketServerSideConnector wsc = new(ws, collectOnlyClientSideMessages: true);
+
+WebSocketClientSideConnector wsc = new(collectOnlyServerSideMessages: true);
+```
+
+Os booleanos controlam se apenas as mensagens vindas do lado oposto serão coletadas. Coletar mensagens do próprio lado pode ser interessante para logs.
 
 ### Enviar mensagem periodicamente
 

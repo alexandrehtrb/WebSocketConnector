@@ -11,6 +11,10 @@ public sealed class WebSocketClientSideConnector : WebSocketConnector
 
     public IReadOnlyDictionary<string, IEnumerable<string>>? ConnectionHttpHeaders { get; private set; }
 
+    public WebSocketClientSideConnector(bool collectOnlyServerSideMessages) : base(collectOnlyServerSideMessages)
+    {
+    }
+
     #region CONNECTION
 
     public async Task ConnectAsync(ClientWebSocket client, HttpClient httpClient, Uri uri, CancellationToken cancellationToken = default)

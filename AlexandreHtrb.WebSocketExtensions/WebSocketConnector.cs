@@ -46,6 +46,11 @@ public abstract class WebSocketConnector
 
     protected WebSocket? ws;
 
+    private readonly bool collectOnlyReceivedMessages;
+
+    public WebSocketConnector(bool collectOnlyReceivedMessages) =>
+        this.collectOnlyReceivedMessages = collectOnlyReceivedMessages;
+
     #region STATE SETTERS
 
     protected void SetIsConnecting() =>
@@ -298,7 +303,7 @@ public abstract class WebSocketConnector
                 msg.BytesStream.Dispose();
             }
 
-            if (!cancellationToken.IsCancellationRequested && msg.ReachedEndOfStream())
+            if (!this.collectOnlyReceivedMessages && !cancellationToken.IsCancellationRequested && msg.ReachedEndOfStream())
             {
                 this.exchangedMessagesCollectorWriter?.TryWrite(msg);
             }
