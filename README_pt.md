@@ -75,12 +75,15 @@ await wsc.SendMessageAsync(WebSocketMessageType.Text, "Olá!", false);
 // Loop da conversa
 await foreach (var msg in wsc.ExchangedMessagesCollector!.ReadAllAsync())
 {
-    await wsc.SendMessageAsync(WebSocketMessageType.Text, msg.ReadAsUtf8Text() switch
+    string? replyTxt = msg.ReadAsUtf8Text() switch
     {
         "Oi!" => "Que horas são?",
         string s when s.StartsWith("Agora são") => "Obrigado!",
-        _ => "Não entendi sua mensagem!"
-    }, false);
+        _ => null
+    };
+    
+    if (replyTxt != null)
+        await wsc.SendMessageAsync(WebSocketMessageType.Text, replyTxt, false);
 }
 ```
 
