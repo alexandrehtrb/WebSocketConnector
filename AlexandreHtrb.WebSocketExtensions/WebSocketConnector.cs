@@ -271,7 +271,37 @@ public abstract class WebSocketConnector
         MessagesToSendChannel!.Writer.WriteAsync(msg) :
         ValueTask.CompletedTask;
 
-    private async Task SendMessageAsync(WebSocketMessage msg, CancellationToken cancellationToken = default)
+    private Task SendMessageAsync(WebSocketMessage msg, CancellationToken cancellationToken = default) =>
+        msg.IsStreamBased ?
+        SendStreamedMessageAsync(msg, cancellationToken) :
+        SendByteArrayMessageAsync(msg, cancellationToken);
+
+    private async Task SendByteArrayMessageAsync(WebSocketMessage msg, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            if (msg.Type == WebSocketMessageType.Close)
+            {
+                await CloseStartingByLocalAsync(msg, cancellationToken);
+                return;
+            }
+            else
+            {
+                await this.ws!.SendAsync(msg.Bytes.AsMemory(), msg.Type, msg.DetermineFlags(), cancellationToken);
+            }
+
+            if (!this.collectOnlyReceivedMessages)
+            {
+                this.exchangedMessagesCollectorWriter?.TryWrite(msg);
+            }
+        }
+        catch
+        {
+            // We will not attempt to close connection if an exception happens
+        }
+    }
+
+    private async Task SendStreamedMessageAsync(WebSocketMessage msg, CancellationToken cancellationToken = default)
     {
         byte[]? buffer = null;
         try
@@ -284,7 +314,7 @@ public abstract class WebSocketConnector
             else
             {
                 buffer = ArrayPool<byte>.Shared.Rent(bufferSize);
-                msg.BytesStream.Seek(0, SeekOrigin.Begin);
+                msg.BytesStream!.Seek(0, SeekOrigin.Begin);
 
                 while (!cancellationToken.IsCancellationRequested)
                 {
@@ -293,7 +323,7 @@ public abstract class WebSocketConnector
                     {
                         break;
                     }
-
+                    
                     await this.ws!.SendAsync(buffer.AsMemory(0, bufferBytesRead), msg.Type, msg.DetermineFlags(), cancellationToken);
                 }
                 ArrayPool<byte>.Shared.Return(buffer);
@@ -324,7 +354,7 @@ public abstract class WebSocketConnector
 
     private async Task<WebSocketMessage?> ReceiveMessageAsync(CancellationToken disconnectToken)
     {
-        MemoryStream accumulator = new();
+        MemoryStream accumulator = new(bufferSize);
         byte[]? buffer = ArrayPool<byte>.Shared.Rent(bufferSize);
         var bufferAsMemory = buffer.AsMemory();
         ValueWebSocketReceiveResult receivalResult;
@@ -342,7 +372,7 @@ public abstract class WebSocketConnector
             buffer = null;
 
             var msgType = receivalResult.MessageType;
-            
+
             WebSocketMessage? msg = null;
             
             if (msgType == WebSocketMessageType.Close && !string.IsNullOrWhiteSpace(this.ws.CloseStatusDescription))
