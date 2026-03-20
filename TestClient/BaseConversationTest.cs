@@ -17,8 +17,8 @@ public abstract class BaseConversationTest
         if (!File.Exists(filePath1) || !File.Exists(filePath2))
             return false;
 
-        using FileStream fs1 = File.OpenRead(filePath1);
-        using FileStream fs2 = File.OpenRead(filePath2);
+        using FileStream fs1 = new(filePath1, FileMode.Open, FileAccess.Read, FileShare.Read);
+        using FileStream fs2 = new(filePath2, FileMode.Open, FileAccess.Read, FileShare.Read);
         using MemoryStream ms1 = new();
         using MemoryStream ms2 = new();
         await fs1.CopyToAsync(ms1, bufferSize: 4096);
