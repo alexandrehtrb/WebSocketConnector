@@ -1,7 +1,7 @@
 ﻿using AlexandreHtrb.WebSocketExtensions;
 using System.Net.WebSockets;
 
-namespace TestClient
+namespace TestClient.Conversations
 {
     internal sealed class ClientDisconnectConversation : BaseConversation
     {

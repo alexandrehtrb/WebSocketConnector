@@ -3,7 +3,7 @@ using TestShared;
 using System.Net.WebSockets;
 using static TestShared.BloodTypeExtensions;
 
-namespace TestClient
+namespace TestClient.Conversations
 {
     internal sealed class ClientServerFullConversation : BaseConversation
     {
@@ -39,14 +39,14 @@ namespace TestClient
                     break;
                 case (WebSocketMessageType.Text, "Your turn! Client, send me an image!"):
                     string smallFilePath = GetClientExampleFilePath("small_file.jpg");
-                    FileStream fs = new(smallFilePath, FileMode.Open);
+                    FileStream fs = new(smallFilePath, FileMode.Open, FileAccess.Read, FileShare.Read);
                     await wsc.SendMessageAsync(WebSocketMessageType.Binary, fs, false);
                     break;
                 case (WebSocketMessageType.Binary, _) when msg.Direction == WebSocketMessageDirection.FromServer:
                     string receivedFilePath = GetClientExampleFilePath("received_img.jpg");
                     using (FileStream fs2 = new(receivedFilePath, FileMode.Create))
                     {
-                        await msg.BytesStream.CopyToAsync(fs2);
+                        await msg.ReadAsStream().CopyToAsync(fs2);
                     }
                     await wsc.SendMessageAsync(WebSocketMessageType.Text, "Server, send me a JSON!", false);
                     break;

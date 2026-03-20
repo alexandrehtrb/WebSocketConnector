@@ -1,11 +1,11 @@
 ﻿using AlexandreHtrb.WebSocketExtensions;
 using System.Net.WebSockets;
 
-namespace TestClient;
+namespace TestClient.Conversations;
 
-internal sealed class ClientClosureMessageConversation : BaseConversation
+internal sealed class ServerClosureMessageConversation : BaseConversation
 {
-    internal ClientClosureMessageConversation(WebSocketClientSideConnector wsc) : base(wsc)
+    internal ServerClosureMessageConversation(WebSocketClientSideConnector wsc) : base(wsc)
     {
     }
 
@@ -14,13 +14,14 @@ internal sealed class ClientClosureMessageConversation : BaseConversation
         // Expected conversation:
         //  1) Client: Hello!
         //  2) Server: Hi!
-        //  3) Client: Adiós muchacho
+        //  3) Client: I can't live without you!
+        //  4) Server: Yes, you can. Bye!
 
         switch (msg.Type, msgText)
         {
             case (WebSocketMessageType.Text, "Hi!"):
                 await Task.Delay(TimeSpan.FromSeconds(1));
-                await wsc.SendMessageAsync(WebSocketMessageType.Close, "Adiós muchacho", false);
+                await wsc.SendMessageAsync(WebSocketMessageType.Text, "I can't live without you!", false);
                 break;
             default:
                 break;

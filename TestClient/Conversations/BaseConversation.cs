@@ -1,7 +1,7 @@
 ﻿using AlexandreHtrb.WebSocketExtensions;
 using System.Net.WebSockets;
 
-namespace TestClient;
+namespace TestClient.Conversations;
 
 internal abstract class BaseConversation
 {
@@ -30,21 +30,14 @@ internal abstract class BaseConversation
         {
             collectedMsgs.Add(msg);
             msgCount++;
-            string msgText = msg.Type switch
-            {
-                WebSocketMessageType.Text or WebSocketMessageType.Close => msg.ReadAsUtf8Text()!,
-                WebSocketMessageType.Binary when msg.BytesStream is MemoryStream ms => $"(binary, {ms.Length} bytes)",
-                WebSocketMessageType.Binary when msg.BytesStream is not MemoryStream => $"(binary, ? bytes)",
-                _ => "(unknown)"
-            };
-            Console.WriteLine($"Message {msgCount}, {msg.Direction}: {msgText}");
+            Console.WriteLine($"Message {msgCount}, {msg.Direction}: {msg.FormatForLogging()}");
 
             if (msg.Direction == WebSocketMessageDirection.FromClient)
             {
                 continue;
             }
 
-            await ReplyMessageAsync(msg, msgText);
+            await ReplyMessageAsync(msg, msg.ReadAsUtf8Text()!);
         }
 
         Console.WriteLine("--- CONVERSATION ENDED ---");

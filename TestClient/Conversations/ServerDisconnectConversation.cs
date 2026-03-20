@@ -1,11 +1,11 @@
 ﻿using AlexandreHtrb.WebSocketExtensions;
 using System.Net.WebSockets;
 
-namespace TestClient;
+namespace TestClient.Conversations;
 
-internal sealed class SubprotocolAndServerDisconnectConversation : BaseConversation
+internal sealed class ServerDisconnectConversation : BaseConversation
 {
-    internal SubprotocolAndServerDisconnectConversation(WebSocketClientSideConnector wsc) : base(wsc)
+    internal ServerDisconnectConversation(WebSocketClientSideConnector wsc) : base(wsc)
     {
     }
 
@@ -14,15 +14,14 @@ internal sealed class SubprotocolAndServerDisconnectConversation : BaseConversat
         // Expected conversation:
         //  1) Client: Hello!
         //  2) Server: Hi!
-        //  3) Client: Which subprotocol are we on?
-        //  4.1) Server: No subprotocol specified.
-        //  4.2) Server: We are on the subprotocol '{subprotocol}'.
+        //  3) Client: Disconnect!
+        //  (server disconnects)
 
         switch (msg.Type, msgText)
         {
             case (WebSocketMessageType.Text, "Hi!"):
                 await Task.Delay(TimeSpan.FromSeconds(1));
-                await wsc.SendMessageAsync(WebSocketMessageType.Text, "Which subprotocol are we on?", false);
+                await wsc.SendMessageAsync(WebSocketMessageType.Text, "Disconnect!", false);
                 break;
             default:
                 break;
