@@ -1,6 +1,6 @@
 using AlexandreHtrb.WebSocketExtensions;
-using TestShared;
 using System.Net.WebSockets;
+using TestShared;
 using static TestShared.BloodTypeExtensions;
 
 namespace TestServer.Endpoints;
@@ -29,13 +29,7 @@ public static class BackgroundWebSocketsProcessor
         await foreach (var msg in wsc.ExchangedMessagesCollector!.ReadAllAsync())
         {
             msgCount++;
-            string msgText = msg.Type switch
-            {
-                WebSocketMessageType.Text or WebSocketMessageType.Close => msg.ReadAsUtf8Text()!,
-                WebSocketMessageType.Binary when msg.BytesStream is MemoryStream ms => $"(binary, {ms.Length} bytes)",
-                WebSocketMessageType.Binary when msg.BytesStream is not MemoryStream => $"(binary, ? bytes)",
-                _ => "(unknown)"
-            };
+            string msgText = msg.FormatForLogging();
             logger.LogInformation("Message {msgCount}, {direction}: {msgText}", msgCount, msg.Direction, msgText);
 
             if (msg.Direction == WebSocketMessageDirection.FromServer)
@@ -56,7 +50,7 @@ public static class BackgroundWebSocketsProcessor
                     break;
                 case (WebSocketMessageType.Text, "Server, send me an image!"):
                     string largeFilePath = GetServerExampleFilePath("large_file.jpg");
-                    FileStream fs = new(largeFilePath, FileMode.Open);
+                    FileStream fs = new(largeFilePath, FileMode.Open, FileAccess.Read, FileShare.Read);
                     await wsc.SendMessageAsync(WebSocketMessageType.Binary, fs, false);
                     await wsc.SendMessageAsync(WebSocketMessageType.Text, "Your turn! Client, send me an image!", false);
                     break;
@@ -64,7 +58,7 @@ public static class BackgroundWebSocketsProcessor
                     string receivedFilePath = GetServerExampleFilePath("received_img.jpg");
                     using (FileStream fs2 = new(receivedFilePath, FileMode.Create))
                     {
-                        await msg.BytesStream.CopyToAsync(fs2);
+                        await msg.ReadAsStream().CopyToAsync(fs2);
                     }
                     break;
                 case (WebSocketMessageType.Text, "Server, send me a JSON!"):
@@ -90,6 +84,8 @@ public static class BackgroundWebSocketsProcessor
                         null or "" => "No subprotocol specified.",
                         _ => $"We are on subprotocol '{subprotocol}'."
                     }, false);
+                    break;
+                case (WebSocketMessageType.Text, "Disconnect!"):
                     await Task.Delay(TimeSpan.FromSeconds(1));
                     await wsc.DisconnectAsync();
                     break;
