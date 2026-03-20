@@ -15,7 +15,12 @@ public static class Program
         var webAppBuilder = WebApplication.CreateBuilder(args);
 
         webAppBuilder.Logging.ClearProviders();
-        webAppBuilder.Logging.AddConsole();
+        webAppBuilder.Logging.AddSimpleConsole(options =>
+        {
+            options.IncludeScopes = false;
+            options.SingleLine = true;
+            options.TimestampFormat = "[HH:mm:ss] ";
+        });
 
         var webApp = webAppBuilder.Build();
         webApp.ConfigureApp();
