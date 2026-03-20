@@ -154,15 +154,7 @@ public static class BackgroundWebSocketsProcessor
         int msgCount = 0;
         await foreach (var msg in wsc.ExchangedMessagesCollector!.ReadAllAsync())
         {
-            msgCount++;
-            string msgText = msg.Type switch
-            {
-                WebSocketMessageType.Text or WebSocketMessageType.Close => msg.ReadAsUtf8Text()!,
-                WebSocketMessageType.Binary when msg.BytesStream is MemoryStream ms => $"(binary, {ms.Length} bytes)",
-                WebSocketMessageType.Binary when msg.BytesStream is not MemoryStream => $"(binary, ? bytes)",
-                _ => "(unknown)"
-            };
-            logger.LogInformation("Message {msgCount}, {direction}: {msgText}", msgCount, msg.Direction, msgText);
+            logger.LogInformation("Message {msgCount}, {direction}: {msgText}", ++msgCount, msg.Direction, msg.FormatForLogging());
 
             // tratamento das mensagens aqui
         }
@@ -201,11 +193,8 @@ Os booleanos controlam se apenas as mensagens vindas do lado oposto serão colet
 ```cs
 while (!cancellationToken.IsCancellationRequested)
 {
-    _ = Task.Run(async () =>
-    {
-        await Task.Delay(TimeSpan.FromSeconds(15));
-        await wsc.SendMessageAsync(WebSocketMessageType.Text, "Alô", false);
-    });
+    await Task.Delay(TimeSpan.FromSeconds(15), cancellationToken);
+    await wsc.SendMessageAsync(WebSocketMessageType.Text, "Alô", false);
 }
 ```
 
@@ -214,7 +203,7 @@ while (!cancellationToken.IsCancellationRequested)
 ```cs
 _ = Task.Run(async () =>
 {
-    await Task.Delay(maximumLifetimePeriod);
+    await Task.Delay(maximumLifetimePeriod, cancellationToken);
     await wsc.DisconnectAsync();
 });
 ```
@@ -275,7 +264,7 @@ private static async Task TestHttp1WebSocket(HttpContext httpCtx, ILogger<Backgr
     {
         using var webSocket = await httpCtx.WebSockets.AcceptWebSocketAsync();
         TaskCompletionSource<object> socketFinishedTcs = new();
-+        string? subprotocol = webSocket.SubProtocol ?? httpCtx.WebSockets.WebSocketRequestedProtocols.FirstOrDefault();
++       string? subprotocol = webSocket.SubProtocol ?? httpCtx.WebSockets.WebSocketRequestedProtocols.FirstOrDefault();
 
         await BackgroundWebSocketsProcessor.RegisterAndProcessAsync(logger, webSocket, subprotocol, socketFinishedTcs);
         await socketFinishedTcs.Task;
