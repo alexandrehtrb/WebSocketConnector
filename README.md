@@ -29,7 +29,7 @@ Add the [NuGet package](https://www.nuget.org/packages/AlexandreHtrb.WebSocketEx
 
 ```xml
 <ItemGroup>
-    <PackageReference Include="AlexandreHtrb.WebSocketExtensions" Version="1.1.0" />
+    <PackageReference Include="AlexandreHtrb.WebSocketExtensions" Version="1.1.1" />
 </ItemGroup>
 ```
 
@@ -217,6 +217,14 @@ await wsc.SendMessageAsync(WebSocketMessageType.Binary, fs, false);
 ```
 
 When using Streams to send messages, don't use the `using` keyword. The Stream will be disposed further, inside the connector.
+
+Also, when sending files, it may be interesting to set a larger buffer size on the WebSocketConnector. When larger buffers are used, less roundtrips are required to read a Stream, which may make for quicker transmissions.
+
+```cs
+WebSocketServerSideConnector wsc = new(ws, true, bufferSize: 65_536);
+
+WebSocketClientSideConnector wsc = new(bufferSize: 65_536);
+```
 
 ### Retrieve HTTP status code and response headers
 

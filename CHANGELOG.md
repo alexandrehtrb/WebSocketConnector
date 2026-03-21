@@ -1,9 +1,15 @@
 # Changelog
 
+* [1.1.1](#111-2026-03-21)
 * [1.1.0](#110-2026-03-20)
 * [1.0.2](#102-2026-03-06)
 * [1.0.1](#101-2026-03-04)
 * [1.0.0](#100-2026-03-03)
+
+## 1.1.1 (2026-03-21)
+
+- Feature: Customizable buffer size.
+- Performance: Remove initial capacity from accumulator MemoryStream when receiving messages.
 
 ## 1.1.0 (2026-03-20)
 

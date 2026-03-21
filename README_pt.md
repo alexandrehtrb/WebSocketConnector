@@ -29,7 +29,7 @@ Adicionar [pacote NuGet](https://www.nuget.org/packages/AlexandreHtrb.WebSocketE
 
 ```xml
 <ItemGroup>
-    <PackageReference Include="AlexandreHtrb.WebSocketExtensions" Version="1.1.0" />
+    <PackageReference Include="AlexandreHtrb.WebSocketExtensions" Version="1.1.1" />
 </ItemGroup>
 ```
 
@@ -216,7 +216,15 @@ FileStream fs = new("C:\\Files\my_image.jpg", FileMode.Open);
 await wsc.SendMessageAsync(WebSocketMessageType.Binary, fs, false);
 ```
 
-Ao usar Streams para enviar mensagens, não usar a palavra-chave `using`. O Stream será disposed só depois, dentro do conector.
+Ao usar Streams para enviar mensagens, não usar a palavra-chave `using`. O Stream será descartado (`.Dispose()`) dentro do conector.
+
+Além disso, ao enviar arquivos, pode ser interessante ter um tamanho maior de buffer no WebSocketConnector. Quando buffers maiores são usados, menos idas-e-voltas são necessárias para ler um Stream, o que pode acarretar em transmissões mais rápidas.
+
+```cs
+WebSocketServerSideConnector wsc = new(ws, true, bufferSize: 65_536);
+
+WebSocketClientSideConnector wsc = new(bufferSize: 65_536);
+```
 
 ### Pegar HTTP status code e headers de resposta
 
