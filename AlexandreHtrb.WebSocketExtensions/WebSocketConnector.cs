@@ -17,7 +17,7 @@ public enum WebSocketConnectionState
 public abstract class WebSocketConnector
 {
     // because Ethernet's MTU is around 1500 bytes
-    private const int bufferSize = 1440;
+    public const int DefaultBufferSize = 1440;
 
     // 20 messages waiting to be send should be enough for most applications.
     private const int messagesToSendChannelCapacity = 20;
@@ -47,9 +47,13 @@ public abstract class WebSocketConnector
     protected WebSocket? ws;
 
     private readonly bool collectOnlyReceivedMessages;
+    private readonly int bufferSize;
 
-    public WebSocketConnector(bool collectOnlyReceivedMessages) =>
+    public WebSocketConnector(bool collectOnlyReceivedMessages, int bufferSize = DefaultBufferSize)
+    {
         this.collectOnlyReceivedMessages = collectOnlyReceivedMessages;
+        this.bufferSize = bufferSize;
+    }
 
     #region STATE SETTERS
 

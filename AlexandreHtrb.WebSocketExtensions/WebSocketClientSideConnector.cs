@@ -11,7 +11,7 @@ public sealed class WebSocketClientSideConnector : WebSocketConnector
 
     public IReadOnlyDictionary<string, IEnumerable<string>>? ConnectionHttpHeaders { get; private set; }
 
-    public WebSocketClientSideConnector(bool collectOnlyServerSideMessages) : base(collectOnlyServerSideMessages)
+    public WebSocketClientSideConnector(bool collectOnlyServerSideMessages, int bufferSize = DefaultBufferSize) : base(collectOnlyServerSideMessages, bufferSize)
     {
     }
 
