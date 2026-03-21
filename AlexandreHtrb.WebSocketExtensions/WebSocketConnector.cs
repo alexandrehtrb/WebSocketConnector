@@ -354,7 +354,7 @@ public abstract class WebSocketConnector
 
     private async Task<WebSocketMessage?> ReceiveMessageAsync(CancellationToken disconnectToken)
     {
-        MemoryStream accumulator = new(bufferSize);
+        MemoryStream accumulator = new();
         byte[]? buffer = ArrayPool<byte>.Shared.Rent(bufferSize);
         var bufferAsMemory = buffer.AsMemory();
         ValueWebSocketReceiveResult receivalResult;
