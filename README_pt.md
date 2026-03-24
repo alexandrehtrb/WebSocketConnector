@@ -30,7 +30,7 @@ Adicionar [pacote NuGet](https://www.nuget.org/packages/AlexandreHtrb.WebSocketE
 
 ```xml
 <ItemGroup>
-    <PackageReference Include="AlexandreHtrb.WebSocketExtensions" Version="1.1.1" />
+    <PackageReference Include="AlexandreHtrb.WebSocketExtensions" Version="1.2.0" />
 </ItemGroup>
 ```
 
@@ -208,7 +208,7 @@ private static IApplicationBuilder ConfigureApp(this WebApplication app) =>
        {
            KeepAliveInterval = TimeSpan.FromSeconds(30),
 #if NET10_0_OR_GREATER
-		   KeepAliveTimeout = TimeSpan.FromSeconds(45)
+           KeepAliveTimeout = TimeSpan.FromSeconds(45)
 #endif
        });
 ```
