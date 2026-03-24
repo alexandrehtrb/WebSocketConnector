@@ -1,6 +1,7 @@
 ﻿using AlexandreHtrb.WebSocketExtensions;
-using TestShared;
 using System.Net.WebSockets;
+using System.Reflection;
+using TestShared;
 using static TestShared.BloodTypeExtensions;
 
 namespace TestClient.Conversations
@@ -68,23 +69,27 @@ namespace TestClient.Conversations
             }
         }
 
-        internal static DirectoryInfo GetProjectDir() =>
-#if DEBUG
-            new DirectoryInfo(Directory.GetCurrentDirectory()).Parent!.Parent!.Parent!;
-#else
-            new DirectoryInfo(Directory.GetCurrentDirectory())!;
-#endif
-
-        internal static string GetClientExampleFilePath(string testFileName)
+        internal static DirectoryInfo GetTestClientDir()
         {
-            string rootPath = GetProjectDir().FullName;
-            return Path.Combine(rootPath, testFileName);
+            // Get the path to the test assembly (e.g., bin/Debug/net8.0/MyTestProject.dll)  
+            DirectoryInfo? currentDir = new(AppContext.BaseDirectory)!;
+
+            // Traverse up to find the project directory  
+            while (currentDir != null)
+            {
+                if (currentDir.EnumerateFiles("*.csproj").Any())
+                {
+                    return currentDir!;
+                }
+                currentDir = currentDir.Parent;
+            }
+            throw new DirectoryNotFoundException("Project directory not found.");
         }
 
-        internal static string GetServerExampleFilePath(string testFileName)
-        {
-            string rootPath = GetProjectDir().Parent!.FullName;
-            return Path.Combine(rootPath, "TestServer", testFileName);
-        }
+        internal static string GetClientExampleFilePath(string testFileName) =>
+            Path.Combine(GetTestClientDir().FullName, testFileName);
+
+        internal static string GetServerExampleFilePath(string testFileName) =>
+            Path.Combine(GetTestClientDir().Parent!.FullName, "TestServer", testFileName);
     }
 }
