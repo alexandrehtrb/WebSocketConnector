@@ -162,44 +162,11 @@ public abstract class WebSocketConnector
         // We are using a channel as a queue here because two different messages
         // should not be sent at the same time through a WebSocket,
         // as the other party cannot distinguish which message part corresponds to which message.
-        Task HasMessageToSendAsync()
-        {
-            try
-            {
-                return MessagesToSendChannel!.Reader.WaitToReadAsync(disconnectToken).AsTask();
-            }
-            catch (OperationCanceledException)
-            {
-                return Task.CompletedTask;
-            }
-        }
+        Task HasMessageToSendAsync() =>
+            MessagesToSendChannel!.Reader.WaitToReadAsync(disconnectToken).AsTask();
 
-        Task<ValueWebSocketReceiveResult> HasMessageToReceiveAsync()
-        {
-            try
-            {
-                return this.ws!.ReceiveAsync(Memory<byte>.Empty, disconnectToken).AsTask();
-            }
-            catch (OperationCanceledException)
-            {
-                return Task.FromResult(default(ValueWebSocketReceiveResult));
-            }
-        }
-
-        async Task HasRemoteDisconnectingAsync()
-        {
-            try
-            {
-                while (!IsRemoteClosingConnection())
-                {
-                    // 200ms interval check
-                    await Task.Delay(200, disconnectToken);
-                }
-            }
-            catch (OperationCanceledException)
-            {
-            }
-        }
+        Task HasMessageToReceiveAsync() =>
+            this.ws!.ReceiveAsync(Memory<byte>.Empty, disconnectToken).AsTask();
 
         bool IsRemoteClosingConnection() =>
             this.ws?.State == WebSocketState.Aborted || this.ws?.State == WebSocketState.CloseReceived;
@@ -218,9 +185,7 @@ public abstract class WebSocketConnector
         {
             var beganSending = HasMessageToSendAsync();
             var beganReceiving = HasMessageToReceiveAsync();
-            var beganRemoteDisconnecting = HasRemoteDisconnectingAsync();
-
-            var firstOperation = await Task.WhenAny(beganSending, beganReceiving, beganRemoteDisconnecting);
+            var firstOperation = await Task.WhenAny(beganSending, beganReceiving);
 
             if (disconnectToken.IsCancellationRequested)
             {
@@ -327,7 +292,7 @@ public abstract class WebSocketConnector
                     {
                         break;
                     }
-                    
+
                     await this.ws!.SendAsync(buffer.AsMemory(0, bufferBytesRead), msg.Type, msg.DetermineFlags(), cancellationToken);
                 }
                 ArrayPool<byte>.Shared.Return(buffer);
@@ -352,7 +317,7 @@ public abstract class WebSocketConnector
         }
     }
 
-#endregion
+    #endregion
 
     #region RECEIVE MESSAGES
 
@@ -378,7 +343,7 @@ public abstract class WebSocketConnector
             var msgType = receivalResult.MessageType;
 
             WebSocketMessage? msg = null;
-            
+
             if (msgType == WebSocketMessageType.Close && !string.IsNullOrWhiteSpace(this.ws.CloseStatusDescription))
             {
                 msg = new(OppositeDirection, msgType, this.ws.CloseStatusDescription!, false);
@@ -409,6 +374,25 @@ public abstract class WebSocketConnector
     private static bool IsReceivingMessage(ValueWebSocketReceiveResult vwsrr) =>
         vwsrr.MessageType != WebSocketMessageType.Close
         && vwsrr.EndOfMessage == false;
+
+    /*
+     From GitHub dotnet/runtime repo issue
+     https://github.com/dotnet/runtime/issues/81762#issuecomment-1421047699
+
+     Difference between ws.CloseAsync() and ws.CloseOutputAsync():
+
+     CloseOutputAsync
+      - Send a close frame
+      - If a close frame has already been received, transition to a closed state and clean up / dispose.
+     
+     CloseAsync
+      - Send a close frame if we haven't already sent one
+      - Read all incoming messages until a close frame is received
+      - Transition to a closed state and clean up / dispose
+
+     In our WebSocketConnector, let's always use CloseOutputAsync(), 
+     so the connector doesn't waste time waiting for remote's close response frame.
+     */
 
     private async Task FinishClosureStartedByRemoteAsync()
     {
@@ -451,12 +435,15 @@ public abstract class WebSocketConnector
             {
                 if (closingMsg is null)
                 {
-                    await this.ws!.CloseAsync(WebSocketCloseStatus.NormalClosure, null, cancellationToken);
+                    await this.ws!.CloseOutputAsync(WebSocketCloseStatus.NormalClosure, null, cancellationToken);
                 }
                 else
                 {
                     await this.ws!.CloseOutputAsync(WebSocketCloseStatus.NormalClosure, closingMsg.ReadAsUtf8Text(), cancellationToken);
-                    this.exchangedMessagesCollectorWriter?.TryWrite(closingMsg);
+                    if (!this.collectOnlyReceivedMessages)
+                    {
+                        this.exchangedMessagesCollectorWriter?.TryWrite(closingMsg);
+                    }
                 }
             }
         }
@@ -471,6 +458,6 @@ public abstract class WebSocketConnector
         }
     }
 
-#endregion
+    #endregion
 
 }
