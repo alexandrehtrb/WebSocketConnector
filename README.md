@@ -13,6 +13,7 @@ It has full compatibility with NativeAOT and trimming.
 - [WebSockets configuration on ASP.NET](#websockets-configuration-on-aspnet)
 - [Tips and tricks](#tips-and-tricks)
   - [Monitor connection state](#monitor-connection-state)
+  - [Keep-Alive](#keep-alive)
   - [Collect sent messages](#collect-sent-messages)
   - [Periodically send a message](#periodically-send-a-message)
   - [End conversation after a certain amount of time](#end-conversation-after-a-certain-amount-of-time)
@@ -177,6 +178,40 @@ wsc.OnConnectionChanged = (state, exception) =>
 ```
 
 Here we can put connection retries.
+
+### Keep-Alive
+
+Keep-Alive is the mechanism to keep the WebSocket alive, without being cut-off by proxies and middleboxes.
+
+On .NET, we can configure a frequency interval, where the party sends a *ping* frame, and a timeout period, which the party awaits for a *pong* response frame after the *ping* frame has been sent. If a *pong* is not received, the connection is considered dead.
+
+This topic is covered in more detail on [this WebSocket.org page](https://websocket.org/guides/heartbeat/).
+
+#### Client-side
+
+```cs
+ClientWebSocket cws = new();
+cws.Options.KeepAliveInterval = TimeSpan.FromSeconds(30);
+#if NET10_0_OR_GREATER
+cws.Options.KeepAliveTimeout = TimeSpan.FromSeconds(45);
+#endif
+
+await wsc.ConnectAsync(cws, hc, uri, default);
+```
+
+#### Server-side
+
+```cs
+private static IApplicationBuilder ConfigureApp(this WebApplication app) =>
+    app.MapTestEndpoints()
+       .UseWebSockets(new()
+       {
+           KeepAliveInterval = TimeSpan.FromSeconds(30),
+#if NET10_0_OR_GREATER
+		   KeepAliveTimeout = TimeSpan.FromSeconds(45)
+#endif
+       });
+```
 
 ### Collect sent messages
 
