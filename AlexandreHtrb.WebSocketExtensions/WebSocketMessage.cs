@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Net.WebSockets;
 using System.Text;
 using System.Text.Json;
@@ -11,6 +12,9 @@ public enum WebSocketMessageDirection
     FromServer = 1
 }
 
+#if DEBUG
+[DebuggerDisplay("{DescriptionForDebugger,nq}")]
+#endif
 public sealed class WebSocketMessage
 {
     internal bool IsStreamBased => BytesStream is not null;
@@ -19,6 +23,10 @@ public sealed class WebSocketMessage
     public WebSocketMessageDirection Direction { get; }
     public WebSocketMessageType Type { get; }
     internal bool DisableCompression { get; }
+
+#if DEBUG
+    private string DescriptionForDebugger => FormatForLogging();
+#endif
 
     internal WebSocketMessage(WebSocketMessageDirection direction, WebSocketMessageType type, byte[] bytes, bool disableCompression)
     {
@@ -89,7 +97,9 @@ public sealed class WebSocketMessage
 
     public string FormatForLogging() => Type switch
     {
-        WebSocketMessageType.Text or WebSocketMessageType.Close => ReadAsUtf8Text()!,
+        WebSocketMessageType.Text or WebSocketMessageType.Close when Bytes is not null || BytesStream is MemoryStream => ReadAsUtf8Text()!,
+        WebSocketMessageType.Text when Bytes is null && (BytesStream is null || BytesStream is not MemoryStream) => "(text, ? bytes)",
+        WebSocketMessageType.Close when Bytes is null && (BytesStream is null || BytesStream is not MemoryStream) => "(close, ? bytes)",
         WebSocketMessageType.Binary when Bytes is not null => $"(binary, {Bytes.Length} bytes)",
         WebSocketMessageType.Binary when BytesStream is MemoryStream ms => $"(binary, {ms.Length} bytes)",
         WebSocketMessageType.Binary when BytesStream is not MemoryStream => "(binary, ? bytes)",
