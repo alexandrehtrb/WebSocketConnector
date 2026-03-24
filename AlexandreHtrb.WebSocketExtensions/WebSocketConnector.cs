@@ -408,6 +408,8 @@ public abstract class WebSocketConnector
             }
 
             // These are the valid states for calling client.CloseOutputAsync()
+            // If the ws state is WebSocketState.CloseSent,
+            // it means CloseStartingByLocalAsync() already has been called.
             if (this.ws?.State == WebSocketState.Open || this.ws?.State == WebSocketState.CloseReceived)
             {
                 await this.ws!.CloseOutputAsync(WebSocketCloseStatus.NormalClosure, null, default);
@@ -430,8 +432,10 @@ public abstract class WebSocketConnector
         try
         {
             SetIsDisconnecting();
-            // These are the valid states for calling client.CloseAsync()
-            if (this.ws?.State == WebSocketState.Open || this.ws?.State == WebSocketState.CloseReceived || this.ws?.State == WebSocketState.CloseSent)
+            // These are the valid states for calling client.CloseOutputAsync()
+            // If the ws state is WebSocketState.CloseSent,
+            // it means CloseStartingByLocalAsync() already has been called.
+            if (this.ws?.State == WebSocketState.Open || this.ws?.State == WebSocketState.CloseReceived)
             {
                 if (closingMsg is null)
                 {
